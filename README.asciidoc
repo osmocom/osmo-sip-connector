@@ -1,0 +1,8 @@
+Osmo SIP Connector
+==================
+
+Simple utility to map MNCC to SIP and SIP to MNCC. The VTY interface
+can be used to make configurations. The code doesn't have any RTP or
+transcoding support.
+
+Call identities can be either the MSISDN or the IMSI of the subscriber.
