@@ -18,6 +18,8 @@
  *
  */
 
+#define _GNU_SOURCE
+
 #include "evpoll.h"
 #include "vty.h"
 #include "logging.h"
@@ -36,8 +38,12 @@
 #include <sofia-sip/su_glib.h>
 
 #include <stdlib.h>
+#include <unistd.h>
+#include <getopt.h>
 
 void *tall_mncc_ctx;
+
+static char *config_file = "osmo-sip-connector.cfg";
 
 static struct log_info_cat mncc_sip_categories[] = {
 	[DSIP] = {
@@ -62,6 +68,39 @@ static const struct log_info mncc_sip_info = {
 	.num_cat = ARRAY_SIZE(mncc_sip_categories),
 };
 
+static void print_help(void)
+{
+	printf("Osmo MNCC to SIP bridge\n");
+	printf("  -h --hekp\tthis text\n");
+	printf("  -c --config-file NAME\tThe config file to use [%s]\n", config_file);
+}
+
+static void handle_options(int argc, char **argv)
+{
+	while (1) {
+		int option_index = 0, c;
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"config-file", 1, 0, 'c'},
+			{NULL, 0, 0, 0}
+		};
+
+		c = getopt_long(argc, argv, "hc:",
+			long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			print_help();
+			exit(0);
+		case 'c':
+			config_file = optarg;
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -84,6 +123,15 @@ int main(int argc, char **argv)
 	sip_root = su_glib_root_create(NULL);
 
 	/* parsing and setup */
+
+	handle_options(argc, argv);
+	rc = vty_read_config_file(config_file, NULL);
+	if (rc < 0) {
+		LOGP(DAPP, LOGL_ERROR, "Can not parse config: %s %d\n",
+			config_file, rc);
+		exit(1);
+	}
+
 	LOGP(DAPP, LOGL_NOTICE, "VTY at %s %d\n",
 		vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
 	rc = telnet_init_dynif(tall_mncc_ctx, NULL,
