@@ -19,6 +19,7 @@
  */
 
 #include "vty.h"
+#include "app.h"
 
 #include <talloc.h>
 

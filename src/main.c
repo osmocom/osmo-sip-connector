@@ -23,6 +23,8 @@
 #include "evpoll.h"
 #include "vty.h"
 #include "logging.h"
+#include "mncc.h"
+#include "app.h"
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/utils.h>
@@ -139,7 +141,8 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-
+	mncc_connection_init(&g_app.mncc.conn, &g_app);
+	mncc_connection_start(&g_app.mncc.conn);
 
 	/* marry sofia-sip to glib and glib to libosmocore */
 	loop = g_main_loop_new(NULL, FALSE);
