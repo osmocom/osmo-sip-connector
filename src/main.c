@@ -84,7 +84,10 @@ int main(int argc, char **argv)
 	sip_root = su_glib_root_create(NULL);
 
 	/* parsing and setup */
-	rc = telnet_init(tall_mncc_ctx, NULL, OSMO_VTY_PORT_MNCC_SIP);
+	LOGP(DAPP, LOGL_NOTICE, "VTY at %s %d\n",
+		vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
+	rc = telnet_init_dynif(tall_mncc_ctx, NULL,
+				vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
 	if (rc < 0)
 		exit(1);
 
