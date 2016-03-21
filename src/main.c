@@ -20,9 +20,9 @@
 
 #include "evpoll.h"
 #include "vty.h"
+#include "logging.h"
 
 #include <osmocom/core/application.h>
-#include <osmocom/core/logging.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/stats.h>
 
@@ -40,6 +40,21 @@
 void *tall_mncc_ctx;
 
 static struct log_info_cat mncc_sip_categories[] = {
+	[DSIP] = {
+		.name		= "DSIP",
+		.description	= "SIP interface",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DMNCC] = {
+		.name		= "DMNCC",
+		.description	= "MNCC interface",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
+	[DAPP] = {
+		.name		= "DAPP",
+		.description	= "Application interface",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
 };
 
 static const struct log_info mncc_sip_info = {
