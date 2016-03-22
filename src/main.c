@@ -64,6 +64,11 @@ static struct log_info_cat mncc_sip_categories[] = {
 		.description	= "Application interface",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
+	[DCALL] = {
+		.name		= "DCALL",
+		.description	= "Call management",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
 };
 
 static const struct log_info mncc_sip_info = {
@@ -149,6 +154,7 @@ int main(int argc, char **argv)
 	}
 
 	calls_init();
+	app_setup(&g_app);
 
 	/* marry sofia-sip to glib and glib to libosmocore */
 	loop = g_main_loop_new(NULL, FALSE);

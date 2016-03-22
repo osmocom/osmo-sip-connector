@@ -22,3 +22,6 @@ struct app_config {
 };
 
 extern struct app_config g_app;
+
+void app_setup(struct app_config *cfg);
+void app_mncc_disconnected(struct mncc_connection *conn);

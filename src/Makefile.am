@@ -6,6 +6,7 @@ noinst_HEADERS = \
 	evpoll.h vty.h mncc_protocol.h app.h mncc.h sip.h call.h
 
 osmo_sip_connector_SOURCES = \
+		app.c \
 		call.c \
 		sip.c \
 		mncc.c \

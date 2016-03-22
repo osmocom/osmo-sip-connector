@@ -18,33 +18,40 @@
  *
  */
 
+#include "app.h"
 #include "call.h"
 #include "logging.h"
+#include "mncc.h"
 
-#include <talloc.h>
-
-
-LLIST_HEAD(g_call_list);
-
-void calls_init(void)
-{}
-
-void call_leg_release(struct call *call, struct call_leg *leg)
+void app_mncc_disconnected(struct mncc_connection *conn)
 {
-	if (leg == call->initial)
-		call->initial = NULL;
-	else if (leg == call->remote)
-		call->remote = NULL;
-	else {
-		LOGP(DAPP, LOGL_ERROR, "call(%u) with unknown leg(%p/%d)\n",
-			call->id, leg, leg->type);
-		return;
-	}
+	struct call *call, *tmp;
 
-	talloc_free(leg);
-	if (!call->initial && !call->remote) {
-		LOGP(DAPP, LOGL_DEBUG, "call(%u) releasing.\n", call->id);
-		llist_del(&call->entry);
-		talloc_free(call);
+	llist_for_each_entry_safe(call, tmp, &g_call_list, entry) {
+		int has_mncc = 0;
+
+		if (call->initial && call->initial->type == CALL_TYPE_MNCC)
+			has_mncc = 1;
+		if (call->remote && call->remote->type == CALL_TYPE_MNCC)
+			has_mncc = 1;
+
+		if (!has_mncc)
+			continue;
+
+		/*
+		 * this call has a MNCC component and we will release it.
+		 */
+		LOGP(DAPP, LOGL_NOTICE,
+			"Going to release call(%u) due MNCC.\n", call->id);
+		call_leg_release(call, call->initial);
+		call_leg_release(call, call->remote);
 	}
+}
+
+/*
+ * I hook SIP and MNCC together.
+ */
+void app_setup(struct app_config *cfg)
+{
+	cfg->mncc.conn.on_disconnect = app_mncc_disconnected;
 }
