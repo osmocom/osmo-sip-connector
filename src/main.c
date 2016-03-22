@@ -25,6 +25,7 @@
 #include "logging.h"
 #include "mncc.h"
 #include "app.h"
+#include "call.h"
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/utils.h>
@@ -147,6 +148,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	calls_init();
 
 	/* marry sofia-sip to glib and glib to libosmocore */
 	loop = g_main_loop_new(NULL, FALSE);
