@@ -5,7 +5,14 @@
 
 struct app_config;
 
+enum {
+	MNCC_DISCONNECTED,
+	MNCC_WAIT_VERSION,
+	MNCC_READY,
+};
+
 struct mncc_connection {
+	int state;
 	struct app_config *app;
 	struct osmo_fd fd;
 
