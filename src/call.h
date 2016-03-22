@@ -2,6 +2,8 @@
 
 #include <osmocom/core/linuxlist.h>
 
+#include "mncc_protocol.h"
+
 struct sip_agent;
 struct mncc_connection;
 
@@ -42,8 +44,17 @@ struct sip_call_leg {
 	struct sip_agent *agent;
 };
 
+enum mncc_cc_state {
+	MNCC_CC_INITIAL,
+};
+
 struct mncc_call_leg {
 	struct call_leg base;
+
+	enum mncc_cc_state state;
+	uint32_t callref;
+	struct gsm_mncc_number called;
+	struct gsm_mncc_number calling;
 
 	struct mncc_connection *conn;
 };
@@ -53,3 +64,6 @@ void calls_init(void);
 
 
 void call_leg_release(struct call *call, struct call_leg *leg);
+
+
+struct call *sip_call_mncc_create(void);

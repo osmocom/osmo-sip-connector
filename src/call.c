@@ -23,8 +23,10 @@
 
 #include <talloc.h>
 
+extern void *tall_mncc_ctx;
 
 LLIST_HEAD(g_call_list);
+static uint32_t last_call_id = 5000;
 
 void calls_init(void)
 {}
@@ -47,4 +49,27 @@ void call_leg_release(struct call *call, struct call_leg *leg)
 		llist_del(&call->entry);
 		talloc_free(call);
 	}
+}
+
+struct call *sip_call_mncc_create(void)
+{
+	struct call *call;
+
+	call = talloc_zero(tall_mncc_ctx, struct call);
+	if (!call) {
+		LOGP(DCALL, LOGL_ERROR, "Failed to allocate memory for call\n");
+		return NULL;
+	}
+	call->id = ++last_call_id;
+
+	call->initial = (struct call_leg *) talloc_zero(call, struct mncc_call_leg);
+	if (!call->initial) {
+		LOGP(DCALL, LOGL_ERROR, "Failed to allocate MNCC leg\n");
+		talloc_free(call);
+		return NULL;
+	}
+
+	call->initial->type = CALL_TYPE_MNCC;
+	llist_add(&call->entry, &g_call_list);
+	return call;
 }

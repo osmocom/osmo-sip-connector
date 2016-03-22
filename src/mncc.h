@@ -3,6 +3,8 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 
+#include <stdint.h>
+
 struct app_config;
 
 enum {
@@ -18,6 +20,7 @@ struct mncc_connection {
 
 	struct osmo_timer_list reconnect;
 
+	uint32_t last_callref;
 
 	/* callback for application logic */
 	void (*on_disconnect)(struct mncc_connection *);

@@ -22,14 +22,98 @@
 #include "mncc_protocol.h"
 #include "app.h"
 #include "logging.h"
+#include "call.h"
 
 #include <osmocom/core/socket.h>
+#include <osmocom/core/utils.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
 
 #include <errno.h>
 #include <unistd.h>
+
+static void close_connection(struct mncc_connection *conn);
+
+
+static struct mncc_call_leg *mncc_find_leg(uint32_t callref, struct call **out_call)
+{
+	struct call *call;
+
+	llist_for_each_entry(call, &g_call_list, entry) {
+		if (call->initial && call->initial->type == CALL_TYPE_MNCC) {
+			struct mncc_call_leg *leg = (struct mncc_call_leg *) call->initial;
+			if (leg->callref == callref) {
+				*out_call = call;
+				return leg;
+			}
+		}
+		if (call->remote && call->remote->type == CALL_TYPE_MNCC) {
+			struct mncc_call_leg *leg = (struct mncc_call_leg *) call->remote;
+			if (leg->callref == callref) {
+				*out_call = call;
+				return leg;
+			}
+		}
+	}
+
+	*out_call = NULL;
+	return NULL;
+}
+
+static void mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+{
+	int rc;
+	struct gsm_mncc mncc = { 0, };
+
+	mncc.msg_type = msg_type;
+	mncc.callref = callref;
+
+	/*
+	 * TODO: we need to put cause in here for release or such? shall we return a
+	 * static struct?
+	 */
+	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
+	if (rc != sizeof(mncc)) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
+		close_connection(conn);
+	}
+}
+
+static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+{
+	int rc;
+	struct gsm_mncc_rtp mncc = { 0, };
+
+	mncc.msg_type = msg_type;
+	mncc.callref = callref;
+
+	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
+	if (rc != sizeof(mncc)) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
+		close_connection(conn);
+	}
+}
+
+
+static void mncc_call_leg_release(struct call *call, struct call_leg *_leg)
+{
+	struct mncc_call_leg *leg;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
+	leg = (struct mncc_call_leg *) _leg;
+
+	/* drop it directly, if not connected */
+	if (leg->conn->state != MNCC_READY)
+		return call_leg_release(call, _leg);
+
+	switch (leg->state) {
+	case MNCC_CC_INITIAL:
+		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
+		call_leg_release(call, _leg);
+		break;
+	}
+}
 
 static void close_connection(struct mncc_connection *conn)
 {
@@ -39,6 +123,79 @@ static void close_connection(struct mncc_connection *conn)
 	conn->state = MNCC_DISCONNECTED;
 	if (conn->on_disconnect)
 		conn->on_disconnect(conn);
+}
+
+static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc_rtp *rtp;
+	struct call *call;
+	struct mncc_call_leg *leg;
+
+	if (rc < sizeof(*rtp)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %d\n",
+			rc, sizeof(*rtp));
+		return close_connection(conn);
+	}
+
+	rtp = (struct gsm_mncc_rtp *) buf;
+	leg = mncc_find_leg(rtp->callref, &call);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
+		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+	}
+
+	/* TODO.. now we can continue with the call */
+	mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
+	call_leg_release(call, &leg->base);
+}
+
+static void check_setup(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct call *call;
+	struct mncc_call_leg *leg;
+
+	if (rc != sizeof(*data)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %d\n",
+			rc, sizeof(*data));
+		return close_connection(conn);
+	}
+
+	data = (struct gsm_mncc *) buf;
+
+	/* screen arguments */
+	if ((data->fields & MNCC_F_CALLED) == 0) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC call(%u) without called addr fields(%u)\n",
+			data->callref, data->fields);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
+	if ((data->fields & MNCC_F_CALLING) == 0) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC call(%u) without calling addr fields(%u)\n",
+			data->callref, data->fields);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
+
+	/* TODO.. bearer caps and better audio handling */
+
+	/* Create an RTP port and then allocate a call */
+	call = sip_call_mncc_create();
+	if (!call) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC call(%u) failed to allocate call\n", data->callref);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
+
+	leg = (struct mncc_call_leg *) call->initial;
+	leg->base.release_call = mncc_call_leg_release;
+	leg->callref = data->callref;
+	leg->conn = conn;
+	leg->state = MNCC_CC_INITIAL;
+	memcpy(&leg->called, &data->called, sizeof(leg->called));
+	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
+
+	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
@@ -104,6 +261,12 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 	switch (msg_type) {
 	case MNCC_SOCKET_HELLO:
 		check_hello(conn, buf, rc);
+		break;
+	case MNCC_SETUP_IND:
+		check_setup(conn, buf, rc);
+		break;
+	case MNCC_RTP_CREATE:
+		check_rtp_create(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",
