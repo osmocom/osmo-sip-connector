@@ -106,7 +106,6 @@ static void handle_options(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	int rc;
-	su_root_t *sip_root;
 	GMainLoop *loop;
 
 	/* initialize osmocom */
@@ -119,10 +118,6 @@ int main(int argc, char **argv)
 	logging_vty_add_cmds(&mncc_sip_info);
 	osmo_stats_vty_add_cmds(&mncc_sip_info);
 
-
-	/* sofia sip */
-	su_init();
-	sip_root = su_glib_root_create(NULL);
 
 	/* parsing and setup */
 
@@ -144,10 +139,19 @@ int main(int argc, char **argv)
 	mncc_connection_init(&g_app.mncc.conn, &g_app);
 	mncc_connection_start(&g_app.mncc.conn);
 
+	/* sofia sip */
+	sip_agent_init(&g_app.sip.agent, &g_app);
+	rc = sip_agent_start(&g_app.sip.agent);
+	if (rc < 0) {
+		LOGP(DSIP, LOGL_ERROR, "Failed to initialize SIP.\n");
+		exit(1);
+	}
+
+
 	/* marry sofia-sip to glib and glib to libosmocore */
 	loop = g_main_loop_new(NULL, FALSE);
-	g_source_attach(su_glib_root_gsource(sip_root), g_main_loop_get_context(loop));
-	su_root_threading(sip_root, 0);
+	g_source_attach(su_glib_root_gsource(g_app.sip.agent.root),
+			g_main_loop_get_context(loop));
 
 	/* prepare integration with osmocom */
 	g_main_context_set_poll_func(g_main_loop_get_context(loop),

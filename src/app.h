@@ -1,6 +1,7 @@
 #pragma once
 
 #include "mncc.h"
+#include "sip.h"
 
 struct app_config {
 	struct {
@@ -9,6 +10,7 @@ struct app_config {
 
 		const char *remote_addr;
 		int remote_port;
+		struct sip_agent agent;
 	} sip;
 
 	struct {
