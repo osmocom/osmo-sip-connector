@@ -30,12 +30,13 @@ enum {
 
 struct call_leg {
 	int type;
+	struct call *call;
 
 	/**
 	 * Set by the call_leg implementation and will be called
 	 * by the application to release the call.
 	 */
-	void (*release_call)(struct call *, struct call_leg *);
+	void (*release_call)(struct call_leg *);
 };
 
 struct sip_call_leg {
@@ -63,7 +64,7 @@ extern struct llist_head g_call_list;
 void calls_init(void);
 
 
-void call_leg_release(struct call *call, struct call_leg *leg);
+void call_leg_release(struct call_leg *leg);
 
 
 struct call *sip_call_mncc_create(void);

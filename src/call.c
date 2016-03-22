@@ -31,8 +31,11 @@ static uint32_t last_call_id = 5000;
 void calls_init(void)
 {}
 
-void call_leg_release(struct call *call, struct call_leg *leg)
+void call_leg_release(struct call_leg *leg)
 {
+	struct call *call = leg->call;
+
+
 	if (leg == call->initial)
 		call->initial = NULL;
 	else if (leg == call->remote)
@@ -70,6 +73,7 @@ struct call *sip_call_mncc_create(void)
 	}
 
 	call->initial->type = CALL_TYPE_MNCC;
+	call->initial->call = call;
 	llist_add(&call->entry, &g_call_list);
 	return call;
 }

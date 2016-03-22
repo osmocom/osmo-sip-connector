@@ -36,28 +36,23 @@
 static void close_connection(struct mncc_connection *conn);
 
 
-static struct mncc_call_leg *mncc_find_leg(uint32_t callref, struct call **out_call)
+static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 {
 	struct call *call;
 
 	llist_for_each_entry(call, &g_call_list, entry) {
 		if (call->initial && call->initial->type == CALL_TYPE_MNCC) {
 			struct mncc_call_leg *leg = (struct mncc_call_leg *) call->initial;
-			if (leg->callref == callref) {
-				*out_call = call;
+			if (leg->callref == callref)
 				return leg;
-			}
 		}
 		if (call->remote && call->remote->type == CALL_TYPE_MNCC) {
 			struct mncc_call_leg *leg = (struct mncc_call_leg *) call->remote;
-			if (leg->callref == callref) {
-				*out_call = call;
+			if (leg->callref == callref)
 				return leg;
-			}
 		}
 	}
 
-	*out_call = NULL;
 	return NULL;
 }
 
@@ -96,7 +91,7 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 }
 
 
-static void mncc_call_leg_release(struct call *call, struct call_leg *_leg)
+static void mncc_call_leg_release(struct call_leg *_leg)
 {
 	struct mncc_call_leg *leg;
 
@@ -105,12 +100,12 @@ static void mncc_call_leg_release(struct call *call, struct call_leg *_leg)
 
 	/* drop it directly, if not connected */
 	if (leg->conn->state != MNCC_READY)
-		return call_leg_release(call, _leg);
+		return call_leg_release(_leg);
 
 	switch (leg->state) {
 	case MNCC_CC_INITIAL:
 		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
-		call_leg_release(call, _leg);
+		call_leg_release(_leg);
 		break;
 	}
 }
@@ -128,7 +123,6 @@ static void close_connection(struct mncc_connection *conn)
 static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_rtp *rtp;
-	struct call *call;
 	struct mncc_call_leg *leg;
 
 	if (rc < sizeof(*rtp)) {
@@ -138,7 +132,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	rtp = (struct gsm_mncc_rtp *) buf;
-	leg = mncc_find_leg(rtp->callref, &call);
+	leg = mncc_find_leg(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
@@ -146,7 +140,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 
 	/* TODO.. now we can continue with the call */
 	mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
-	call_leg_release(call, &leg->base);
+	call_leg_release(&leg->base);
 }
 
 static void check_setup(struct mncc_connection *conn, char *buf, int rc)

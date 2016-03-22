@@ -43,8 +43,8 @@ void app_mncc_disconnected(struct mncc_connection *conn)
 		 */
 		LOGP(DAPP, LOGL_NOTICE,
 			"Going to release call(%u) due MNCC.\n", call->id);
-		call_leg_release(call, call->initial);
-		call_leg_release(call, call->remote);
+		call_leg_release(call->initial);
+		call_leg_release(call->remote);
 	}
 }
 
