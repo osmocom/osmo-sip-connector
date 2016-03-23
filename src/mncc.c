@@ -195,6 +195,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	leg->state = MNCC_CC_INITIAL;
 	memcpy(&leg->called, &data->called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
+	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
 
 	LOGP(DMNCC, LOGL_DEBUG,
 		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",

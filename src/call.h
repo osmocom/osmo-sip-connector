@@ -56,6 +56,7 @@ struct mncc_call_leg {
 	uint32_t callref;
 	struct gsm_mncc_number called;
 	struct gsm_mncc_number calling;
+	char imsi[16];
 
 	struct mncc_connection *conn;
 };
