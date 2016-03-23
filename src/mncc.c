@@ -99,11 +99,16 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	leg = (struct mncc_call_leg *) _leg;
 
 	/* drop it directly, if not connected */
-	if (leg->conn->state != MNCC_READY)
+	if (leg->conn->state != MNCC_READY) {
+		LOGP(DMNCC, LOGL_DEBUG,
+			"MNCC not connected releasing leg leg(%u)\n", leg->callref);
 		return call_leg_release(_leg);
+	}
 
 	switch (leg->state) {
 	case MNCC_CC_INITIAL:
+		LOGP(DMNCC, LOGL_DEBUG,
+			"Releasing call in initial-state leg(%u)\n", leg->callref);
 		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
 		call_leg_release(_leg);
 		break;
@@ -126,7 +131,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	struct mncc_call_leg *leg;
 
 	if (rc < sizeof(*rtp)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %d\n",
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %zu\n",
 			rc, sizeof(*rtp));
 		return close_connection(conn);
 	}
@@ -139,6 +144,8 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	/* TODO.. now we can continue with the call */
+	LOGP(DMNCC, LOGL_DEBUG,
+		"RTP set-up continuing with call with leg(%u)\n", leg->callref);	
 	mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
 	call_leg_release(&leg->base);
 }
@@ -150,7 +157,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	struct mncc_call_leg *leg;
 
 	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %d\n",
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
 			rc, sizeof(*data));
 		return close_connection(conn);
 	}
@@ -160,13 +167,13 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	/* screen arguments */
 	if ((data->fields & MNCC_F_CALLED) == 0) {
 		LOGP(DMNCC, LOGL_ERROR,
-			"MNCC call(%u) without called addr fields(%u)\n",
+			"MNCC leg(%u) without called addr fields(%u)\n",
 			data->callref, data->fields);
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
 	if ((data->fields & MNCC_F_CALLING) == 0) {
 		LOGP(DMNCC, LOGL_ERROR,
-			"MNCC call(%u) without calling addr fields(%u)\n",
+			"MNCC leg(%u) without calling addr fields(%u)\n",
 			data->callref, data->fields);
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
@@ -177,7 +184,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	call = sip_call_mncc_create();
 	if (!call) {
 		LOGP(DMNCC, LOGL_ERROR,
-			"MNCC call(%u) failed to allocate call\n", data->callref);
+			"MNCC leg(%u) failed to allocate call\n", data->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
 
@@ -189,6 +196,10 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	memcpy(&leg->called, &data->called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 
+	LOGP(DMNCC, LOGL_DEBUG,
+		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",
+		call->id, leg->callref, data->imsi);
+
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
@@ -197,7 +208,7 @@ static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 	struct gsm_mncc_hello *hello;
 
 	if (rc != sizeof(*hello)) {
-		LOGP(DMNCC, LOGL_ERROR, "Hello shorter than expected %d vs. %d\n",
+		LOGP(DMNCC, LOGL_ERROR, "Hello shorter than expected %d vs. %zu\n",
 			rc, sizeof(*hello));
 		return close_connection(conn);
 	}
