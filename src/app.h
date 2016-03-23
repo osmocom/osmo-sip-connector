@@ -3,6 +3,8 @@
 #include "mncc.h"
 #include "sip.h"
 
+struct call;
+
 struct app_config {
 	struct {
 		const char *local_addr;
@@ -24,4 +26,6 @@ struct app_config {
 extern struct app_config g_app;
 
 void app_setup(struct app_config *cfg);
+void app_route_call(struct call *call, const char *source, const char *port);
+
 void app_mncc_disconnected(struct mncc_connection *conn);

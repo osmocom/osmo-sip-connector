@@ -55,3 +55,20 @@ void app_setup(struct app_config *cfg)
 {
 	cfg->mncc.conn.on_disconnect = app_mncc_disconnected;
 }
+
+static void route_to_sip(struct call *call, const char *source, const char *dest)
+{
+	LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to SIP yet\n", call->id);
+	call_leg_release(call->initial);
+}
+
+void app_route_call(struct call *call, const char *source, const char *dest)
+{
+	if (call->initial->type == CALL_TYPE_MNCC)
+		route_to_sip(call, source, dest);
+	else {
+		LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to MNCC yet\n",
+			call->id);
+		call_leg_release(call->initial);
+	}
+}

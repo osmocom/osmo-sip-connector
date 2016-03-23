@@ -24,6 +24,8 @@
 #include "logging.h"
 #include "call.h"
 
+#include <osmocom/gsm/protocol/gsm_03_40.h>
+
 #include <osmocom/core/socket.h>
 #include <osmocom/core/utils.h>
 
@@ -32,6 +34,8 @@
 
 #include <errno.h>
 #include <unistd.h>
+
+extern void *tall_mncc_ctx;
 
 static void close_connection(struct mncc_connection *conn);
 
@@ -155,6 +159,21 @@ static void close_connection(struct mncc_connection *conn)
 		conn->on_disconnect(conn);
 }
 
+static void continue_call(struct mncc_call_leg *leg)
+{
+	char *dest, *source;
+
+	if (leg->called.type == GSM340_TYPE_INTERNATIONAL)
+		dest = talloc_asprintf(tall_mncc_ctx, "+%.32s", leg->called.number);
+	else
+		dest = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->called.number);
+	source = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->calling.number);
+
+	app_route_call(leg->base.call, source, dest);
+	talloc_free(source);
+	talloc_free(dest);
+}
+
 static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_rtp *rtp;
@@ -177,8 +196,19 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	LOGP(DMNCC, LOGL_DEBUG,
 		"RTP set-up continuing with call with leg(%u)\n", leg->callref);	
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
-	mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
-	call_leg_release(&leg->base);
+	continue_call(leg);
+}
+
+static int continue_setup(struct mncc_connection *conn, struct gsm_mncc *mncc)
+{
+	if (mncc->called.plan != GSM340_PLAN_ISDN) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"leg(%u) has non(%d) ISDN dial plan. not supported.\n",
+			mncc->callref, mncc->called.plan);
+		return 0;
+	}
+
+	return 1;
 }
 
 static void check_setup(struct mncc_connection *conn, char *buf, int rc)
@@ -210,6 +240,11 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	/* TODO.. bearer caps and better audio handling */
+	if (!continue_setup(conn, data)) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC screening parameters failed leg(%u)\n", data->callref);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
 
 	/* Create an RTP port and then allocate a call */
 	call = sip_call_mncc_create();
