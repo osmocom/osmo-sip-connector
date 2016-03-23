@@ -6,3 +6,19 @@ can be used to make configurations. The code doesn't have any RTP or
 transcoding support.
 
 Call identities can be either the MSISDN or the IMSI of the subscriber.
+
+
+Requirements of Equipment
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+* DTMF need to be sent using SIP INFO messages. DTMF in RTP is not
+supported.
+
+* BTS+PBX and SIP connector+PBX  must be in the same network (UDP must be
+able to flow directly between these elements)
+
+* No handover support.
+
+* IP based BTS (e.g. Sysmocom sysmoBTS but no Siemens BS11)
+
+* No emergency calls
