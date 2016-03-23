@@ -35,6 +35,36 @@
 
 static void close_connection(struct mncc_connection *conn);
 
+static void cmd_timeout(void *data)
+{
+	struct mncc_call_leg *leg = data;
+
+	LOGP(DMNCC, LOGL_ERROR, "cmd(%u) never arrived for leg(%u)\n",
+		leg->rsp_wanted, leg->callref);
+	call_leg_release(&leg->base);
+}
+
+static void start_cmd_timer(struct mncc_call_leg *leg, uint32_t expected_next)
+{
+	leg->rsp_wanted = expected_next;
+
+	leg->cmd_timeout.cb = cmd_timeout;
+	leg->cmd_timeout.data = leg;
+	osmo_timer_schedule(&leg->cmd_timeout, 5, 0);
+}
+
+static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
+{
+	if (leg->rsp_wanted != got_res) {
+		LOGP(DMNCC, LOGL_ERROR, "Wanted rsp(%u) but got(%u) for leg(%u)\n",
+			leg->rsp_wanted, got_res, leg->callref);
+		return;
+	}
+
+	LOGP(DMNCC, LOGL_DEBUG,
+		"Got response, stopping timer on leg(%u)\n", leg->callref);
+	osmo_timer_del(&leg->cmd_timeout);
+}
 
 static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 {
@@ -146,6 +176,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	/* TODO.. now we can continue with the call */
 	LOGP(DMNCC, LOGL_DEBUG,
 		"RTP set-up continuing with call with leg(%u)\n", leg->callref);	
+	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
 	call_leg_release(&leg->base);
 }
@@ -201,6 +232,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",
 		call->id, leg->callref, data->imsi);
 
+	start_cmd_timer(leg, MNCC_RTP_CREATE);
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 

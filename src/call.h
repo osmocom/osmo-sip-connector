@@ -1,6 +1,7 @@
 #pragma once
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/timer.h>
 
 #include "mncc_protocol.h"
 
@@ -57,6 +58,9 @@ struct mncc_call_leg {
 	struct gsm_mncc_number called;
 	struct gsm_mncc_number calling;
 	char imsi[16];
+
+	struct osmo_timer_list cmd_timeout;
+	int rsp_wanted;
 
 	struct mncc_connection *conn;
 };
