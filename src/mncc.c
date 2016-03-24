@@ -192,9 +192,17 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
 	}
 
+	/* extract information about where the RTP is */
+	leg->base.ip = rtp->ip;
+	leg->base.port = rtp->port;
+	leg->base.payload_type = rtp->payload_type;
+	leg->base.payload_msg_type = rtp->payload_msg_type;
+
 	/* TODO.. now we can continue with the call */
 	LOGP(DMNCC, LOGL_DEBUG,
-		"RTP set-up continuing with call with leg(%u)\n", leg->callref);	
+		"RTP cnt leg(%u) ip(%u), port(%u) pt(%u) ptm(%u)\n",
+		leg->callref, leg->base.ip, leg->base.port,
+		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	continue_call(leg);
 }
