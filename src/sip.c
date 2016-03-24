@@ -20,6 +20,10 @@
 
 #include "sip.h"
 #include "app.h"
+#include "call.h"
+#include "logging.h"
+
+#include <osmocom/core/utils.h>
 
 #include <talloc.h>
 
@@ -29,6 +33,98 @@ extern void *tall_mncc_ctx;
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
+	LOGP(DSIP, LOGL_DEBUG, "SIP event(%u) status(%d) phrase(%s) %p\n",
+		event, status, phrase, hmagic);
+}
+
+
+static void sip_release_call(struct call_leg *_leg)
+{
+	struct sip_call_leg *leg;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+
+	/*
+	 * If a dialogue is not confirmed yet, we can probably not do much
+	 * but wait for the timeout. For a confirmed one we can send cancel
+	 * and for a connected one bye. I don't see how sofia-sip is going
+	 * to help us here.
+	 */
+	nua_cancel(leg->nua_handle, TAG_END());
+}
+
+static const char *media_name(int ptmsg)
+{
+	return "GSM";
+}
+
+static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
+			const char *calling_num, const char *called_num)
+{
+	struct call_leg *other = leg->base.call->initial;
+	struct in_addr net = { .s_addr = ntohl(other->ip) };
+
+	char *from = talloc_asprintf(leg, "sip:%s@%s",
+				calling_num,	
+				agent->app->sip.local_addr);
+	char *to = talloc_asprintf(leg, "sip:%s@%s",
+				called_num,
+				agent->app->sip.remote_addr);
+	char *sdp = talloc_asprintf(leg,
+				"v=0\r\n"
+				"o=Osmocom 0 0 IN IP4 %s\r\n"
+				"s=GSM Call\r\n"
+				"c=IN IP4 %s\r\n"
+				"t=0 0\r\n"
+				"m=audio %d RTP/AVP %d\r\n"
+				"a=rtpmap:%d %s/8000\r\n",
+				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
+				other->port, other->payload_type,
+				other->payload_type,
+				media_name(other->payload_msg_type));
+
+	nua_invite(leg->nua_handle,
+			SIPTAG_FROM_STR(from),
+			SIPTAG_TO_STR(to),
+			NUTAG_MEDIA_ENABLE(0),
+			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+			SIPTAG_PAYLOAD_STR(sdp),
+			TAG_END());
+
+	leg->base.call->remote = &leg->base;
+	talloc_free(from);
+	talloc_free(to);
+	talloc_free(sdp);
+	return 0;
+}
+
+int sip_create_remote_leg(struct sip_agent *agent, struct call *call,
+				const char *source, const char *dest)
+{
+	struct sip_call_leg *leg;
+
+	leg = talloc_zero(call, struct sip_call_leg);
+	if (!leg) {
+		LOGP(DSIP, LOGL_ERROR, "Failed to allocate leg for call(%u)\n",
+			call->id);
+		return -1;
+	}
+
+	leg->base.type = CALL_TYPE_SIP;
+	leg->base.call = call;
+	leg->base.release_call = sip_release_call;
+	leg->agent = agent;
+
+	leg->nua_handle = nua_handle(agent->nua, leg, TAG_END());
+	if (!leg->nua_handle) {
+		LOGP(DSIP, LOGL_ERROR, "Failed to allocate nua for call(%u)\n",
+			call->id);
+		talloc_free(leg);
+		return -2;
+	}
+
+	return send_invite(agent, leg, source, dest);
 }
 
 char *make_sip_uri(struct sip_agent *agent)

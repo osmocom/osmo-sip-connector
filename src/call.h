@@ -10,6 +10,9 @@
 struct sip_agent;
 struct mncc_connection;
 
+
+struct nua_handle_s;
+
 struct call_leg;
 
 /**
@@ -63,9 +66,14 @@ struct call_leg {
 };
 
 struct sip_call_leg {
+	/* base class */
 	struct call_leg base;
 
+	/* back pointer */
 	struct sip_agent *agent;
+
+	/* per instance members */
+	struct nua_handle_s *nua_handle;
 };
 
 enum mncc_cc_state {

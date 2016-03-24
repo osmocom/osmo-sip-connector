@@ -58,8 +58,8 @@ void app_setup(struct app_config *cfg)
 
 static void route_to_sip(struct call *call, const char *source, const char *dest)
 {
-	LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to SIP yet\n", call->id);
-	call->initial->release_call(call->initial);
+	if (sip_create_remote_leg(&g_app.sip.agent, call, source, dest) != 0)
+		call->initial->release_call(call->initial);
 }
 
 void app_route_call(struct call *call, const char *source, const char *dest)

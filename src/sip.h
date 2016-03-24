@@ -8,6 +8,7 @@
 #include <sofia-sip/nua.h>
 
 struct app_config;
+struct call;
 
 struct sip_agent {
 	struct app_config	*app;
@@ -19,3 +20,5 @@ struct sip_agent {
 
 void sip_agent_init(struct sip_agent *agent, struct app_config *app);
 int sip_agent_start(struct sip_agent *agent);
+
+int sip_create_remote_leg(struct sip_agent *agent, struct call *call, const char *local, const char *remote);

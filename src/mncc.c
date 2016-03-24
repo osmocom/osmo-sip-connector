@@ -348,6 +348,7 @@ static void check_disc_ind(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
 
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
@@ -358,6 +359,10 @@ static void check_disc_ind(struct mncc_connection *conn, char *buf, int rc)
 	leg->base.in_release = true;
 	start_cmd_timer(leg, MNCC_REL_CNF);
 	mncc_send(leg->conn, MNCC_REL_REQ, leg->callref);
+
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg)
+		other_leg->release_call(other_leg);
 }
 
 static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
