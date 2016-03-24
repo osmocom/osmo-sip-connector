@@ -315,8 +315,14 @@ static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
 
 	if (leg->base.in_release)
 		stop_cmd_timer(leg, MNCC_REL_IND);
+	else {
+		struct call_leg *other_leg;
+		other_leg = call_leg_other(&leg->base);
+		if (other_leg)
+			other_leg->release_call(other_leg);
+	}
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n", data->callref);
-	call_leg_release(leg);
+	call_leg_release(&leg->base);
 }
 
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)

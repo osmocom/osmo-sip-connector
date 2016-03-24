@@ -81,6 +81,7 @@ struct mncc_call_leg {
 extern struct llist_head g_call_list;
 void calls_init(void);
 
+struct call_leg *call_leg_other(struct call_leg *leg);
 
 void call_leg_release(struct call_leg *leg);
 
