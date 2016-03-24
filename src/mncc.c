@@ -322,23 +322,36 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
+static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
+					char *buf, int rc, struct gsm_mncc **mncc)
+{
+	struct mncc_call_leg *leg;
+
+	if (rc != sizeof(**mncc)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
+			rc, sizeof(**mncc));
+		close_connection(conn);
+		return NULL;
+	}
+
+	*mncc = (struct gsm_mncc *) buf;
+	leg = mncc_find_leg((*mncc)->callref);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", (*mncc)->callref);
+		return NULL;
+	}
+
+	return leg;
+}
+
 static void check_disc_ind(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
-	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(*data));
-		return close_connection(conn);
-	}
-
-	data = (struct gsm_mncc *) buf;
-	leg = mncc_find_leg(data->callref);
-	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "disc call(%u) can not be found\n", data->callref);
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
 		return;
-	}
 
 	LOGP(DMNCC,
 		LOGL_DEBUG, "leg(%u) was disconnected. Releasing\n", data->callref);
@@ -352,18 +365,9 @@ static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
-	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(*data));
-		return close_connection(conn);
-	}
-
-	data = (struct gsm_mncc *) buf;
-	leg = mncc_find_leg(data->callref);
-	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "rel call(%u) can not be found\n", data->callref);
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
 		return;
-	}
 
 	if (leg->base.in_release)
 		stop_cmd_timer(leg, MNCC_REL_IND);
@@ -382,19 +386,9 @@ static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
-	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(*data));
-		return close_connection(conn);
-	}
-
-	data = (struct gsm_mncc *) buf;
-	leg = mncc_find_leg(data->callref);
-	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "rel.cnf call(%u) can not be found\n",
-			data->callref);
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
 		return;
-	}
 
 	stop_cmd_timer(leg, MNCC_REL_CNF);
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was cnf released.\n", data->callref);
@@ -406,19 +400,9 @@ static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
-	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(*data));
-		return close_connection(conn);
-	}
-
-	data = (struct gsm_mncc *) buf;
-	leg = mncc_find_leg(data->callref);
-	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "stp.cmpl call(%u) can not be found\n",
-			data->callref);
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
 		return;
-	}
 
 	LOGP(DMNCC, LOGL_NOTICE, "leg(%u) is now connected.\n", leg->callref);
 	stop_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
