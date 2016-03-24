@@ -48,9 +48,10 @@ void call_leg_release(struct call_leg *leg)
 
 	talloc_free(leg);
 	if (!call->initial && !call->remote) {
-		LOGP(DAPP, LOGL_DEBUG, "call(%u) releasing.\n", call->id);
+		uint32_t id = call->id;
 		llist_del(&call->entry);
 		talloc_free(call);
+		LOGP(DAPP, LOGL_DEBUG, "call(%u) released.\n", id);
 	}
 }
 
