@@ -78,3 +78,15 @@ struct call *sip_call_mncc_create(void)
 	llist_add(&call->entry, &g_call_list);
 	return call;
 }
+
+struct call_leg *call_leg_other(struct call_leg *leg)
+{
+	if (leg->call->initial == leg)
+		return leg->call->remote;
+	if (leg->call->remote == leg)
+		return leg->call->initial;
+
+	LOGP(DAPP, LOGL_NOTICE, "leg(0x%p) not belonging to call(%u)\n",
+		leg, leg->call->id);
+	return NULL;
+}
