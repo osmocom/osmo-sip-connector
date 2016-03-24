@@ -146,6 +146,17 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
 		call_leg_release(_leg);
 		break;
+	case MNCC_CC_PROCEEDING:
+		LOGP(DMNCC, LOGL_DEBUG,
+			"Releasing call in proc-state leg(%u)\n", leg->callref);
+		leg->base.in_release = true;
+		start_cmd_timer(leg, MNCC_REL_IND);
+		mncc_send(leg->conn, MNCC_DISC_REQ, leg->callref);
+		break;
+	default:
+		LOGP(DMNCC, LOGL_ERROR, "Unknown state leg(%u) state(%d)\n",
+			leg->callref, leg->state);
+		break;
 	}
 }
 
@@ -162,6 +173,10 @@ static void close_connection(struct mncc_connection *conn)
 static void continue_call(struct mncc_call_leg *leg)
 {
 	char *dest, *source;
+
+	/* TODO.. continue call obviously only for MO call right now */
+	mncc_send(leg->conn, MNCC_CALL_PROC_REQ, leg->callref);
+	leg->state = MNCC_CC_PROCEEDING;
 
 	if (leg->called.type == GSM340_TYPE_INTERNATIONAL)
 		dest = talloc_asprintf(tall_mncc_ctx, "+%.32s", leg->called.number);
@@ -279,6 +294,30 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
+static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	if (rc != sizeof(*data)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
+			rc, sizeof(*data));
+		return close_connection(conn);
+	}
+
+	data = (struct gsm_mncc *) buf;
+	leg = mncc_find_leg(data->callref);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "rel call(%u) can not be found\n", data->callref);
+		return;
+	}
+
+	if (leg->base.in_release)
+		stop_cmd_timer(leg, MNCC_REL_IND);
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n", data->callref);
+	call_leg_release(leg);
+}
+
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_hello *hello;
@@ -348,6 +387,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_RTP_CREATE:
 		check_rtp_create(conn, buf, rc);
+		break;
+	case MNCC_REL_IND:
+		check_rel_ind(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",

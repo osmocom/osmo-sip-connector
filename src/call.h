@@ -5,6 +5,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 
+#include <stdbool.h>
 
 struct sip_agent;
 struct mncc_connection;
@@ -34,6 +35,8 @@ struct call_leg {
 	int type;
 	struct call *call;
 
+	bool in_release;
+
 	/**
 	 * RTP data
 	 */
@@ -57,6 +60,7 @@ struct sip_call_leg {
 
 enum mncc_cc_state {
 	MNCC_CC_INITIAL,
+	MNCC_CC_PROCEEDING,
 };
 
 struct mncc_call_leg {
