@@ -45,6 +45,16 @@ struct call_leg {
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
 
+        /**
+         * Remote started to ring/alert
+         */
+        void (*ring_call)(struct call_leg *);
+
+        /**
+         * Remote picked up
+         */
+        void (*connect_call)(struct call_leg *);
+
 	/**
 	 * Set by the call_leg implementation and will be called
 	 * by the application to release the call.
@@ -60,7 +70,8 @@ struct sip_call_leg {
 
 enum mncc_cc_state {
 	MNCC_CC_INITIAL,
-	MNCC_CC_PROCEEDING,
+	MNCC_CC_PROCEEDING, /* skip delivered state */
+	MNCC_CC_CONNECTED,
 };
 
 struct mncc_call_leg {
