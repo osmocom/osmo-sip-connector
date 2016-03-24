@@ -43,7 +43,7 @@ static void cmd_timeout(void *data)
 {
 	struct mncc_call_leg *leg = data;
 
-	LOGP(DMNCC, LOGL_ERROR, "cmd(%u) never arrived for leg(%u)\n",
+	LOGP(DMNCC, LOGL_ERROR, "cmd(0x%x) never arrived for leg(%u)\n",
 		leg->rsp_wanted, leg->callref);
 	call_leg_release(&leg->base);
 }
@@ -66,7 +66,8 @@ static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
 	}
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"Got response, stopping timer on leg(%u)\n", leg->callref);
+		"Got response(0x%x), stopping timer on leg(%u)\n",
+		got_res, leg->callref);
 	osmo_timer_del(&leg->cmd_timeout);
 }
 
