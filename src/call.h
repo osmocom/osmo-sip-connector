@@ -1,9 +1,10 @@
 #pragma once
 
+#include "mncc_protocol.h"
+
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 
-#include "mncc_protocol.h"
 
 struct sip_agent;
 struct mncc_connection;
