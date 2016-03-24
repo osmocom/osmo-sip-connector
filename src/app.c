@@ -59,7 +59,7 @@ void app_setup(struct app_config *cfg)
 static void route_to_sip(struct call *call, const char *source, const char *dest)
 {
 	LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to SIP yet\n", call->id);
-	call_leg_release(call->initial);
+	call->initial->release_call(call->initial);
 }
 
 void app_route_call(struct call *call, const char *source, const char *dest)
