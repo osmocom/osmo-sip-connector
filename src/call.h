@@ -35,6 +35,14 @@ struct call_leg {
 	struct call *call;
 
 	/**
+	 * RTP data
+	 */
+	uint32_t	ip;
+	uint16_t	port;
+	uint32_t	payload_type;
+	uint32_t	payload_msg_type;
+
+	/**
 	 * Set by the call_leg implementation and will be called
 	 * by the application to release the call.
 	 */
