@@ -125,6 +125,30 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 	}
 }
 
+static void mncc_call_leg_connect(struct call_leg *_leg)
+{
+	struct mncc_call_leg *leg;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
+	leg = (struct mncc_call_leg *) _leg;
+
+	/*
+	 * TODO.. connect rtp now..
+	 */
+
+	start_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
+	mncc_send(leg->conn, MNCC_SETUP_RSP, leg->callref);
+}
+
+static void mncc_call_leg_ring(struct call_leg *_leg)
+{
+	struct mncc_call_leg *leg;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
+	leg = (struct mncc_call_leg *) _leg;
+
+	mncc_send(leg->conn, MNCC_ALERT_REQ, leg->callref);
+}
 
 static void mncc_call_leg_release(struct call_leg *_leg)
 {
@@ -148,8 +172,9 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 		call_leg_release(_leg);
 		break;
 	case MNCC_CC_PROCEEDING:
+	case MNCC_CC_CONNECTED:
 		LOGP(DMNCC, LOGL_DEBUG,
-			"Releasing call in proc-state leg(%u)\n", leg->callref);
+			"Releasing call in non-initial leg(%u)\n", leg->callref);
 		leg->base.in_release = true;
 		start_cmd_timer(leg, MNCC_REL_IND);
 		mncc_send(leg->conn, MNCC_DISC_REQ, leg->callref);
@@ -279,6 +304,8 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	leg = (struct mncc_call_leg *) call->initial;
+	leg->base.connect_call = mncc_call_leg_connect;
+	leg->base.ring_call = mncc_call_leg_ring;
 	leg->base.release_call = mncc_call_leg_release;
 	leg->callref = data->callref;
 	leg->conn = conn;
@@ -374,6 +401,30 @@ static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
 	call_leg_release(&leg->base);
 }
 
+static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	if (rc != sizeof(*data)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
+			rc, sizeof(*data));
+		return close_connection(conn);
+	}
+
+	data = (struct gsm_mncc *) buf;
+	leg = mncc_find_leg(data->callref);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "stp.cmpl call(%u) can not be found\n",
+			data->callref);
+		return;
+	}
+
+	LOGP(DMNCC, LOGL_NOTICE, "leg(%u) is now connected.\n", leg->callref);
+	stop_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
+	leg->state = MNCC_CC_CONNECTED;
+}
+
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_hello *hello;
@@ -452,6 +503,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_REL_CNF:
 		check_rel_cnf(conn, buf, rc);
+		break;
+	case MNCC_SETUP_COMPL_IND:
+		check_stp_cmpl_ind(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",
