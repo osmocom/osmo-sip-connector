@@ -127,14 +127,36 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 
 static void mncc_call_leg_connect(struct call_leg *_leg)
 {
+	struct gsm_mncc_rtp mncc = { 0, };
 	struct mncc_call_leg *leg;
+	struct call_leg *other;
+	int rc;
 
 	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
 	leg = (struct mncc_call_leg *) _leg;
 
+	other = call_leg_other(_leg);
+
 	/*
-	 * TODO.. connect rtp now..
+	 * Send RTP CONNECT and we handle the general failure of it by
+	 * tearing down the call.
 	 */
+	mncc.msg_type = MNCC_RTP_CONNECT;
+	mncc.callref = leg->callref;
+	mncc.ip = other->ip;
+	mncc.port = other->port;
+	mncc.payload_type = other->payload_type;
+	/*
+	 * FIXME: mncc.payload_msg_type should already be compatible.. but
+	 * payload_type should be different..
+	 */
+	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
+	if (rc != sizeof(mncc)) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
+			leg->callref);
+		close_connection(leg->conn);
+		return;
+	}
 
 	start_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
 	mncc_send(leg->conn, MNCC_SETUP_RSP, leg->callref);
@@ -213,6 +235,37 @@ static void continue_call(struct mncc_call_leg *leg)
 	app_route_call(leg->base.call, source, dest);
 	talloc_free(source);
 	talloc_free(dest);
+}
+
+static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc_rtp *rtp;
+	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+
+	if (rc < sizeof(*rtp)) {
+		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %zu\n",
+			rc, sizeof(*rtp));
+		return close_connection(conn);
+	}
+
+	rtp = (struct gsm_mncc_rtp *) buf;
+	leg = mncc_find_leg(rtp->callref);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", rtp->callref);
+		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+	}
+
+	/* extract information about where the RTP is */
+	if (rtp->ip != 0 || rtp->port != 0 || rtp->payload_type != 0)
+		return;
+
+	LOGP(DMNCC, LOGL_ERROR, "leg(%u) rtp connect failed\n", rtp->callref);
+
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg)
+		other_leg->release_call(other_leg);
+	leg->base.release_call(&leg->base);
 }
 
 static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
@@ -478,6 +531,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_RTP_CREATE:
 		check_rtp_create(conn, buf, rc);
+		break;
+	case MNCC_RTP_CONNECT:
+		check_rtp_connect(conn, buf, rc);
 		break;
 	case MNCC_DISC_IND:
 		check_disc_ind(conn, buf, rc);
