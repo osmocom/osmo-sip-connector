@@ -3,9 +3,10 @@ bin_PROGRAMS = osmo-sip-connector
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(SOFIASIP_CFLAGS)
 
 noinst_HEADERS = \
-	evpoll.h vty.h mncc_protocol.h app.h mncc.h sip.h call.h
+	evpoll.h vty.h mncc_protocol.h app.h mncc.h sip.h call.h sdp.h
 
 osmo_sip_connector_SOURCES = \
+		sdp.c \
 		app.c \
 		call.c \
 		sip.c \

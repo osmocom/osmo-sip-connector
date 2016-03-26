@@ -22,10 +22,10 @@
 #include "app.h"
 #include "call.h"
 #include "logging.h"
+#include "sdp.h"
 
 #include <osmocom/core/utils.h>
 
-#include <sofia-sip/sdp.h>
 #include <sofia-sip/sip_status.h>
 
 #include <talloc.h>
@@ -33,137 +33,6 @@
 #include <string.h>
 
 extern void *tall_mncc_ctx;
-
-/*
- * We want to decide on the audio codec later but we need to see
- * if it is even including some of the supported ones.
- */
-static bool screen_sdp(const sip_t *sip)
-{
-	const char *sdp_data;
-	sdp_parser_t *parser;
-	sdp_session_t *sdp;
-	sdp_media_t *media;
-
-	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
-		LOGP(DSIP, LOGL_ERROR, "No SDP file\n");
-		return false;
-	}
-
-	sdp_data = sip->sip_payload->pl_data;
-	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
-	if (!parser) {
-		LOGP(DSIP, LOGL_ERROR, "Failed to parse SDP\n");
-		return false;
-	}
-
-	sdp = sdp_session(parser);
-	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "No sdp session\n");
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	for (media = sdp->sdp_media; media; media = media->m_next) {
-		sdp_rtpmap_t *map;
-
-		if (media->m_proto != sdp_proto_rtp)
-			continue;
-		if (media->m_type != sdp_media_audio)
-			continue;
-
-		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (strcasecmp(map->rm_encoding, "GSM") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "GSM-EFR") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "GSM-HR-08") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "AMR") == 0)
-				goto success;
-		}
-	}
-
-	sdp_parser_free(parser);
-	return false;
-
-success:
-	sdp_parser_free(parser);
-	return true;
-}
-
-static bool extract_sdp(struct sip_call_leg *leg, const sip_t *sip)
-{
-	sdp_connection_t *conn;
-	sdp_session_t *sdp;
-	sdp_parser_t *parser;
-	sdp_media_t *media;
-	const char *sdp_data;
-	bool found_conn = false, found_map = false;
-
-	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) but no SDP file\n", leg);
-		return false;
-	}
-
-	sdp_data = sip->sip_payload->pl_data;
-	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
-	if (!parser) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) failed to parse SDP\n",
-			leg);
-		return false;
-	}
-
-	sdp = sdp_session(parser);
-	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) no sdp session\n", leg);
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	for (conn = sdp->sdp_connection; conn; conn = conn->c_next) {
-		struct in_addr addr;
-
-		if (conn->c_addrtype != sdp_addr_ip4)
-			continue;
-		inet_aton(conn->c_address, &addr);
-		leg->base.ip = addr.s_addr;
-		found_conn = true;
-		break;
-	}
-
-	for (media = sdp->sdp_media; media; media = media->m_next) {
-		sdp_rtpmap_t *map;
-
-		if (media->m_proto != sdp_proto_rtp)
-			continue;
-		if (media->m_type != sdp_media_audio)
-			continue;
-
-		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
-				continue;
-
-			leg->base.port = media->m_port;
-			leg->base.payload_type = map->rm_pt;
-			found_map = true;
-			break;
-		}
-
-		if (found_map)
-			break;
-	}
-
-	if (!found_conn || !found_map) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) did not find %d/%d\n",
-			leg, found_conn, found_map);
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	sdp_parser_free(parser);
-	return true;
-}
 
 static void call_progress(struct sip_call_leg *leg, const sip_t *sip)
 {
@@ -187,7 +56,7 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 		return;
 	}
 
-	if (!extract_sdp(leg, sip)) {
+	if (!sdp_extract_sdp(leg, sip)) {
 		LOGP(DSIP, LOGL_ERROR, "leg(%p) incompatible audio, releasing\n", leg);
 		nua_cancel(leg->nua_handle, TAG_END());
 		other->release_call(other);
@@ -205,7 +74,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 {
 	LOGP(DSIP, LOGL_DEBUG, "Incoming call handle(%p)\n", nh);
 
-	if (!screen_sdp(sip)) {
+	if (!sdp_screen_sdp(sip)) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
 		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
 		nua_handle_destroy(nh);
