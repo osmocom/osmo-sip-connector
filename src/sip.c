@@ -223,18 +223,13 @@ static void sip_release_call(struct call_leg *_leg)
 	}
 }
 
-static const char *media_name(int ptmsg)
-{
-	return "GSM";
-}
-
 static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
 	struct call_leg *other = leg->base.call->initial;
 	struct in_addr net = { .s_addr = ntohl(other->ip) };
 
-	leg->wanted_codec = media_name(other->payload_msg_type);
+	leg->wanted_codec = app_media_name(other->payload_msg_type);
 
 	char *from = talloc_asprintf(leg, "sip:%s@%s",
 				calling_num,

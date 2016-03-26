@@ -22,6 +22,7 @@
 #include "call.h"
 #include "logging.h"
 #include "mncc.h"
+#include "mncc_protocol.h"
 
 void app_mncc_disconnected(struct mncc_connection *conn)
 {
@@ -71,4 +72,19 @@ void app_route_call(struct call *call, const char *source, const char *dest)
 			call->id);
 		call_leg_release(call->initial);
 	}
+}
+
+const char *app_media_name(int ptmsg)
+{
+	if (ptmsg == GSM_TCHF_FRAME)
+		return "GSM";
+	if (ptmsg == GSM_TCHF_FRAME_EFR)
+		return "GSM-EFR";
+	if (ptmsg == GSM_TCHH_FRAME)
+		return "GSM-HR-08";
+	if (ptmsg == GSM_TCH_FRAME_AMR)
+		return "AMR";
+
+	LOGP(DAPP, LOGL_ERROR, "Unknown ptmsg(%d). call broken\n", ptmsg);
+	return "unknown";
 }

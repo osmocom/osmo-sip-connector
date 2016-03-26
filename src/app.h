@@ -29,3 +29,5 @@ void app_setup(struct app_config *cfg);
 void app_route_call(struct call *call, const char *source, const char *port);
 
 void app_mncc_disconnected(struct mncc_connection *conn);
+
+const char *app_media_name(int pt_msg);
