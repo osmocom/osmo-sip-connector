@@ -116,6 +116,8 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	leg->nua_handle = nh;
 	nua_handle_bind(nh, leg);
 	leg->sdp_payload = talloc_strdup(leg, sip->sip_payload->pl_data);
+
+	app_route_call(call, from, to);
 }
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
@@ -209,7 +211,14 @@ static void sip_release_call(struct call_leg *_leg)
 		break;
 	case SIP_CC_DLG_CNFD:
 		LOGP(DSIP, LOGL_NOTICE, "Canceling leg(%p) in cnfd state\n", leg);
-		nua_cancel(leg->nua_handle, TAG_END());
+		if (leg->dir == SIP_DIR_MT)
+			nua_cancel(leg->nua_handle, TAG_END());
+		else {
+			nua_respond(leg->nua_handle, SIP_486_BUSY_HERE,
+					TAG_END());
+			nua_handle_destroy(leg->nua_handle);
+			call_leg_release(&leg->base);
+		}
 		break;
 	case SIP_CC_CONNECTED:
 		LOGP(DSIP, LOGL_NOTICE, "Ending leg(%p) in con\n", leg);

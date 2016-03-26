@@ -70,7 +70,7 @@ void app_route_call(struct call *call, const char *source, const char *dest)
 	else {
 		LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to MNCC yet\n",
 			call->id);
-		call_leg_release(call->initial);
+		call->initial->release_call(call->initial);
 	}
 }
 
