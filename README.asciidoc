@@ -22,3 +22,13 @@ able to flow directly between these elements)
 * IP based BTS (e.g. Sysmocom sysmoBTS but no Siemens BS11)
 
 * No emergency calls
+
+Limitations
+^^^^^^^^^^^
+
+* PT of RTP needs to match the one used by the BTS. E.g. AMR needs to use
+the same PT as the BTS. This is because rtp_payload2 is not yet supported
+by the osmo-bts software.
+
+* AMR SDP file doesn't include the mode-set params and allowed codec modes.
+This needs to be configured in some way.
