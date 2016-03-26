@@ -78,6 +78,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
 		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
 		nua_handle_destroy(nh);
+		return;
 	}
 
 	nua_respond(nh, SIP_501_NOT_IMPLEMENTED, TAG_END());
