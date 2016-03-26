@@ -251,6 +251,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				leg->wanted_codec);
 
 	leg->state = SIP_CC_INITIAL;
+	leg->dir = SIP_DIR_MT;
 	nua_invite(leg->nua_handle,
 			SIPTAG_FROM_STR(from),
 			SIPTAG_TO_STR(to),

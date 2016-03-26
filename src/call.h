@@ -71,6 +71,11 @@ enum sip_cc_state {
 	SIP_CC_CONNECTED,
 };
 
+enum sip_dir {
+	SIP_DIR_MO,
+	SIP_DIR_MT,
+};
+
 struct sip_call_leg {
 	/* base class */
 	struct call_leg base;
@@ -81,6 +86,7 @@ struct sip_call_leg {
 	/* per instance members */
 	struct nua_handle_s *nua_handle;
 	enum sip_cc_state state;
+	enum sip_dir dir;
 	const char *wanted_codec;
 };
 
