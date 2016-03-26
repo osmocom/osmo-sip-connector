@@ -10,6 +10,9 @@
 struct sip_agent;
 struct mncc_connection;
 
+
+struct nua_handle_s;
+
 struct call_leg;
 
 /**
@@ -62,10 +65,23 @@ struct call_leg {
 	void (*release_call)(struct call_leg *);
 };
 
+enum sip_cc_state {
+	SIP_CC_INITIAL,
+	SIP_CC_DLG_CNFD,
+	SIP_CC_CONNECTED,
+};
+
 struct sip_call_leg {
+	/* base class */
 	struct call_leg base;
 
+	/* back pointer */
 	struct sip_agent *agent;
+
+	/* per instance members */
+	struct nua_handle_s *nua_handle;
+	enum sip_cc_state state;
+	const char *wanted_codec;
 };
 
 enum mncc_cc_state {
