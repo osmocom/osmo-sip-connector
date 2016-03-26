@@ -61,6 +61,9 @@ int sip_agent_start(struct sip_agent *agent)
 	agent->nua = nua_create(agent->root,
 				nua_callback, agent,
 				NUTAG_URL(sip_uri),
+				NUTAG_AUTOACK(0),
+				NUTAG_AUTOALERT(0),
+				NUTAG_AUTOANSWER(0),
 				TAG_END());
 	talloc_free(sip_uri);
 	return agent->nua ? 0 : -1;
