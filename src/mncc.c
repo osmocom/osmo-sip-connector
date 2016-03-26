@@ -349,7 +349,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	/* Create an RTP port and then allocate a call */
-	call = sip_call_mncc_create();
+	call = call_mncc_create();
 	if (!call) {
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC leg(%u) failed to allocate call\n", data->callref);

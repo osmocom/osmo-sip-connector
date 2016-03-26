@@ -113,4 +113,4 @@ struct call_leg *call_leg_other(struct call_leg *leg);
 void call_leg_release(struct call_leg *leg);
 
 
-struct call *sip_call_mncc_create(void);
+struct call *call_mncc_create(void);
