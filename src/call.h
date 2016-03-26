@@ -120,3 +120,4 @@ void call_leg_release(struct call_leg *leg);
 
 
 struct call *call_mncc_create(void);
+struct call *call_sip_create(void);

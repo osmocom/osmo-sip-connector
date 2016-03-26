@@ -79,6 +79,30 @@ struct call *call_mncc_create(void)
 	return call;
 }
 
+struct call *call_sip_create(void)
+{
+	struct call *call;
+
+	call = talloc_zero(tall_mncc_ctx, struct call);
+	if (!call) {
+		LOGP(DCALL, LOGL_ERROR, "Failed to allocate memory for call\n");
+		return NULL;
+	}
+	call->id = ++last_call_id;
+
+	call->initial = (struct call_leg *) talloc_zero(call, struct sip_call_leg);
+	if (!call->initial) {
+		LOGP(DCALL, LOGL_ERROR, "Failed to allocate SIP leg\n");
+		talloc_free(call);
+		return NULL;
+	}
+
+	call->initial->type = CALL_TYPE_SIP;
+	call->initial->call = call;
+	llist_add(&call->entry, &g_call_list);
+	return call;
+}
+
 struct call_leg *call_leg_other(struct call_leg *leg)
 {
 	if (leg->call->initial == leg)
