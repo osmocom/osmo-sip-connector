@@ -87,7 +87,12 @@ struct sip_call_leg {
 	struct nua_handle_s *nua_handle;
 	enum sip_cc_state state;
 	enum sip_dir dir;
+
+	/* mo field */
 	const char *wanted_codec;
+
+	/* mt field */
+	const char *sdp_payload;
 };
 
 enum mncc_cc_state {

@@ -34,6 +34,8 @@
 
 extern void *tall_mncc_ctx;
 
+static void sip_release_call(struct call_leg *_leg);
+
 static void call_progress(struct sip_call_leg *leg, const sip_t *sip)
 {
 	struct call_leg *other = call_leg_other(&leg->base);
@@ -72,6 +74,10 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 			const sip_t *sip)
 {
+	struct call *call;
+	struct sip_call_leg *leg;
+	const char *from = NULL, *to = NULL;
+
 	LOGP(DSIP, LOGL_DEBUG, "Incoming call handle(%p)\n", nh);
 
 	if (!sdp_screen_sdp(sip)) {
@@ -81,8 +87,35 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		return;
 	}
 
-	nua_respond(nh, SIP_501_NOT_IMPLEMENTED, TAG_END());
-	nua_handle_destroy(nh);
+	call = call_sip_create();
+	if (!call) {
+		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
+		nua_respond(nh, SIP_500_INTERNAL_SERVER_ERROR, TAG_END());
+		nua_handle_destroy(nh);
+		return;
+	}
+
+	if (sip->sip_to)
+		to = sip->sip_to->a_url->url_user;
+	if (sip->sip_from)
+		from = sip->sip_from->a_url->url_user;
+
+	if (!to || !from) {
+		LOGP(DSIP, LOGL_ERROR, "Unknown from/to for invite.\n");
+		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
+		nua_handle_destroy(nh);
+		return;
+	}
+
+	leg = (struct sip_call_leg *) call->initial;
+	leg->state = SIP_CC_DLG_CNFD;
+	leg->dir = SIP_DIR_MO;
+
+	leg->base.release_call = sip_release_call;
+	leg->agent = agent;
+	leg->nua_handle = nh;
+	nua_handle_bind(nh, leg);
+	leg->sdp_payload = talloc_strdup(leg, sip->sip_payload->pl_data);
 }
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
@@ -135,12 +168,22 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 			other->release_call(other);
 	} else if (event == nua_i_invite) {
 		/* new incoming leg */
-		struct sip_call_leg *leg = (struct sip_call_leg *) hmagic;
 
 		if (status == 100)
 			new_call((struct sip_agent *) magic, nh, sip);
 	} else if (event == nua_i_cancel) {
-		LOGP(DSIP, LOGL_ERROR, "Canceled but not implemented.\n");
+		struct sip_call_leg *leg;
+		struct call_leg *other;
+
+		LOGP(DSIP, LOGL_ERROR, "Canceled on leg(%p)\n", hmagic);
+
+		leg = (struct sip_call_leg *) hmagic;
+		other = call_leg_other(&leg->base);
+
+		nua_handle_destroy(leg->nua_handle);
+		call_leg_release(&leg->base);
+		if (other)
+			other->release_call(other);
 	}
 }
 
