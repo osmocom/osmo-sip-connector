@@ -26,12 +26,71 @@
 #include <osmocom/core/utils.h>
 
 #include <sofia-sip/sdp.h>
+#include <sofia-sip/sip_status.h>
 
 #include <talloc.h>
 
 #include <string.h>
 
 extern void *tall_mncc_ctx;
+
+/*
+ * We want to decide on the audio codec later but we need to see
+ * if it is even including some of the supported ones.
+ */
+static bool screen_sdp(const sip_t *sip)
+{
+	const char *sdp_data;
+	sdp_parser_t *parser;
+	sdp_session_t *sdp;
+	sdp_media_t *media;
+
+	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
+		LOGP(DSIP, LOGL_ERROR, "No SDP file\n");
+		return false;
+	}
+
+	sdp_data = sip->sip_payload->pl_data;
+	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
+	if (!parser) {
+		LOGP(DSIP, LOGL_ERROR, "Failed to parse SDP\n");
+		return false;
+	}
+
+	sdp = sdp_session(parser);
+	if (!sdp) {
+		LOGP(DSIP, LOGL_ERROR, "No sdp session\n");
+		sdp_parser_free(parser);
+		return false;
+	}
+
+	for (media = sdp->sdp_media; media; media = media->m_next) {
+		sdp_rtpmap_t *map;
+
+		if (media->m_proto != sdp_proto_rtp)
+			continue;
+		if (media->m_type != sdp_media_audio)
+			continue;
+
+		for (map = media->m_rtpmaps; map; map = map->rm_next) {
+			if (strcasecmp(map->rm_encoding, "GSM") == 0)
+				goto success;
+			if (strcasecmp(map->rm_encoding, "GSM-EFR") == 0)
+				goto success;
+			if (strcasecmp(map->rm_encoding, "GSM-HR-08") == 0)
+				goto success;
+			if (strcasecmp(map->rm_encoding, "AMR") == 0)
+				goto success;
+		}
+	}
+
+	sdp_parser_free(parser);
+	return false;
+
+success:
+	sdp_parser_free(parser);
+	return true;
+}
 
 static bool extract_sdp(struct sip_call_leg *leg, const sip_t *sip)
 {
@@ -141,6 +200,21 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 	nua_ack(leg->nua_handle, TAG_END());
 }
 
+static void new_call(struct sip_agent *agent, nua_handle_t *nh,
+			const sip_t *sip)
+{
+	LOGP(DSIP, LOGL_DEBUG, "Incoming call handle(%p)\n", nh);
+
+	if (!screen_sdp(sip)) {
+		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
+		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
+		nua_handle_destroy(nh);
+	}
+
+	nua_respond(nh, SIP_501_NOT_IMPLEMENTED, TAG_END());
+	nua_handle_destroy(nh);
+}
+
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
 	LOGP(DSIP, LOGL_DEBUG, "SIP event(%u) status(%d) phrase(%s) %p\n",
@@ -189,6 +263,14 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 
 		if (other)
 			other->release_call(other);
+	} else if (event == nua_i_invite) {
+		/* new incoming leg */
+		struct sip_call_leg *leg = (struct sip_call_leg *) hmagic;
+
+		if (status == 100)
+			new_call((struct sip_agent *) magic, nh, sip);
+	} else if (event == nua_i_cancel) {
+		LOGP(DSIP, LOGL_ERROR, "Canceled but not implemented.\n");
 	}
 }
 
