@@ -35,6 +35,8 @@
 extern void *tall_mncc_ctx;
 
 static void sip_release_call(struct call_leg *_leg);
+static void sip_ring_call(struct call_leg *_leg);
+static void sip_connect_call(struct call_leg *_leg);
 
 static void call_progress(struct sip_call_leg *leg, const sip_t *sip)
 {
@@ -112,6 +114,8 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	leg->dir = SIP_DIR_MO;
 
 	leg->base.release_call = sip_release_call;
+	leg->base.ring_call = sip_ring_call;
+	leg->base.connect_call = sip_connect_call;
 	leg->agent = agent;
 	leg->nua_handle = nh;
 	nua_handle_bind(nh, leg);
@@ -227,13 +231,49 @@ static void sip_release_call(struct call_leg *_leg)
 	}
 }
 
+static void sip_ring_call(struct call_leg *_leg)
+{
+	struct sip_call_leg *leg;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+
+	nua_respond(leg->nua_handle, SIP_180_RINGING, TAG_END());
+}
+
+static void sip_connect_call(struct call_leg *_leg)
+{
+	struct call_leg *other;
+	struct sip_call_leg *leg;
+	char *sdp;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+
+	/*
+	 * TODO/FIXME: check if resulting codec is compatible..
+	 */
+
+	other = call_leg_other(&leg->base);
+	if (!other) {
+		sip_release_call(&leg->base);
+		return;
+	}
+
+	sdp = sdp_create_file(leg, other);
+
+	leg->state = SIP_CC_CONNECTED;
+	nua_respond(leg->nua_handle, SIP_200_OK,
+			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+			SIPTAG_PAYLOAD_STR(sdp),
+			TAG_END());
+	talloc_free(sdp);
+}
+
 static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
 	struct call_leg *other = leg->base.call->initial;
-	struct in_addr net = { .s_addr = ntohl(other->ip) };
-
-	leg->wanted_codec = app_media_name(other->payload_msg_type);
 
 	char *from = talloc_asprintf(leg, "sip:%s@%s",
 				calling_num,
@@ -241,18 +281,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	char *to = talloc_asprintf(leg, "sip:%s@%s",
 				called_num,
 				agent->app->sip.remote_addr);
-	char *sdp = talloc_asprintf(leg,
-				"v=0\r\n"
-				"o=Osmocom 0 0 IN IP4 %s\r\n"
-				"s=GSM Call\r\n"
-				"c=IN IP4 %s\r\n"
-				"t=0 0\r\n"
-				"m=audio %d RTP/AVP %d\r\n"
-				"a=rtpmap:%d %s/8000\r\n",
-				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
-				other->port, other->payload_type,
-				other->payload_type,
-				leg->wanted_codec);
+	char *sdp = sdp_create_file(leg, other);
 
 	leg->state = SIP_CC_INITIAL;
 	leg->dir = SIP_DIR_MT;

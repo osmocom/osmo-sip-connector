@@ -21,6 +21,9 @@
 #include "sdp.h"
 #include "call.h"
 #include "logging.h"
+#include "app.h"
+
+#include <talloc.h>
 
 #include <sofia-sip/sdp.h>
 
@@ -158,4 +161,23 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip)
 
 	sdp_parser_free(parser);
 	return true;
+}
+
+char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
+{
+	struct in_addr net = { .s_addr = ntohl(other->ip) };
+
+	leg->wanted_codec = app_media_name(other->payload_msg_type);
+	return talloc_asprintf(leg,
+				"v=0\r\n"
+				"o=Osmocom 0 0 IN IP4 %s\r\n"
+				"s=GSM Call\r\n"
+				"c=IN IP4 %s\r\n"
+				"t=0 0\r\n"
+				"m=audio %d RTP/AVP %d\r\n"
+				"a=rtpmap:%d %s/8000\r\n",
+				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
+				other->port, other->payload_type,
+				other->payload_type,
+				leg->wanted_codec);
 }
