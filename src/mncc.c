@@ -473,6 +473,23 @@ static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
 	leg->state = MNCC_CC_CONNECTED;
 }
 
+static void check_rej_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg)
+		other_leg->release_call(other_leg);
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected.\n", data->callref);
+	call_leg_release(&leg->base);
+}
+
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_hello *hello;
@@ -608,6 +625,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_REL_IND:
 		check_rel_ind(conn, buf, rc);
+		break;
+	case MNCC_REJ_IND:
+		check_rej_ind(conn, buf, rc);
 		break;
 	case MNCC_REL_CNF:
 		check_rel_cnf(conn, buf, rc);
