@@ -42,9 +42,14 @@ static void close_connection(struct mncc_connection *conn);
 static void cmd_timeout(void *data)
 {
 	struct mncc_call_leg *leg = data;
+	struct call_leg *other_leg;
 
 	LOGP(DMNCC, LOGL_ERROR, "cmd(0x%x) never arrived for leg(%u)\n",
 		leg->rsp_wanted, leg->callref);
+
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg)
+		other_leg->release_call(other_leg);
 	call_leg_release(&leg->base);
 }
 
