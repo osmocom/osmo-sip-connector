@@ -63,15 +63,19 @@ static void route_to_sip(struct call *call, const char *source, const char *dest
 		call->initial->release_call(call->initial);
 }
 
+static void route_to_mncc(struct call *call, const char *source,
+		const char *dest)
+{
+	if (mncc_create_remote_leg(&g_app.mncc.conn, call, source, dest) != 0)
+		call->initial->release_call(call->initial);
+}
+
 void app_route_call(struct call *call, const char *source, const char *dest)
 {
 	if (call->initial->type == CALL_TYPE_MNCC)
 		route_to_sip(call, source, dest);
-	else {
-		LOGP(DAPP, LOGL_ERROR, "Can not route call(%u) to MNCC yet\n",
-			call->id);
-		call->initial->release_call(call->initial);
-	}
+	else
+		route_to_mncc(call, source, dest);
 }
 
 const char *app_media_name(int ptmsg)

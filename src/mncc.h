@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 struct app_config;
+struct call;
 
 enum {
 	MNCC_DISCONNECTED,
@@ -28,3 +29,6 @@ struct mncc_connection {
 
 void mncc_connection_init(struct mncc_connection *conn, struct app_config *cfg);
 void mncc_connection_start(struct mncc_connection *conn);
+
+int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
+				const char *calling, const char *called);

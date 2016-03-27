@@ -489,6 +489,63 @@ static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 	conn->state = MNCC_READY;
 }
 
+int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
+			const char *calling, const char *called)
+{
+	struct mncc_call_leg *leg;
+	struct gsm_mncc mncc = { 0, };
+	int rc;
+
+	leg = talloc_zero(call, struct mncc_call_leg);
+	if (!leg) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to allocate leg call(%u)\n",
+			call->id);
+		return -1;
+	}
+
+	leg->base.type = CALL_TYPE_MNCC;
+	leg->base.connect_call = mncc_call_leg_connect;
+	leg->base.ring_call = mncc_call_leg_ring;
+	leg->base.release_call = mncc_call_leg_release;
+	leg->base.call = call;
+
+	leg->callref = call->id;
+
+	leg->conn = conn;
+	leg->state = MNCC_CC_INITIAL;
+
+	mncc.msg_type = MNCC_SETUP_REQ;
+	mncc.callref = leg->callref;
+
+	mncc.fields |= MNCC_F_CALLING;
+	mncc.calling.plan = 1;
+	mncc.calling.type = 0x0;
+	memcpy(&mncc.calling.number, calling, sizeof(mncc.calling.number));
+
+	mncc.fields |= MNCC_F_CALLED;
+	mncc.called.plan = 1;
+	mncc.called.type = 0x0;
+	memcpy(&mncc.called.number, called, sizeof(mncc.called.number));
+
+	/*
+	 * TODO/FIXME:
+	 *  - Determine/request channel based on offered audio codecs
+	 *  - Screening, redirect?
+	 *  - Synth. the bearer caps based on codecs?
+	 */
+	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
+	if (rc != sizeof(mncc)) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
+			leg->callref);
+		close_connection(conn);
+		talloc_free(leg);
+		return -1;
+	}
+
+	call->remote = &leg->base;
+	return 0;
+}
+
 static void mncc_reconnect(void *data)
 {
 	int rc;
