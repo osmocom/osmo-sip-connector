@@ -196,6 +196,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 		LOGP(DMNCC, LOGL_DEBUG,
 			"Releasing call in initial-state leg(%u)\n", leg->callref);
 		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
+		osmo_timer_del(&leg->cmd_timeout);
 		call_leg_release(_leg);
 		break;
 	case MNCC_CC_PROCEEDING:
