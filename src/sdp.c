@@ -90,7 +90,7 @@ success:
 	return true;
 }
 
-bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip)
+bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 {
 	sdp_connection_t *conn;
 	sdp_session_t *sdp;
@@ -139,7 +139,7 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip)
 			continue;
 
 		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
+			if (!any_codec && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
 				continue;
 
 			leg->base.port = media->m_port;

@@ -60,7 +60,7 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 		return;
 	}
 
-	if (!sdp_extract_sdp(leg, sip)) {
+	if (!sdp_extract_sdp(leg, sip, false)) {
 		LOGP(DSIP, LOGL_ERROR, "leg(%p) incompatible audio, releasing\n", leg);
 		nua_cancel(leg->nua_handle, TAG_END());
 		other->release_call(other);
@@ -112,6 +112,21 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	leg = (struct sip_call_leg *) call->initial;
 	leg->state = SIP_CC_DLG_CNFD;
 	leg->dir = SIP_DIR_MO;
+
+	/*
+	 * FIXME/TODO.. we need to select the codec at some point. But it is
+	 * not this place. It starts with the TCH/F vs. TCH/H selection based
+	 * on the offered codecs, and then RTP_CREATE should have it. So both
+	 * are GSM related... and do not belong here. Just pick the first codec
+	 * so the IP addresss port and payload type is set.
+	 */
+	if (!sdp_extract_sdp(leg, sip, true)) {
+		LOGP(DSIP, LOGL_ERROR, "leg(%p) no audio, releasing\n", leg);
+		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
+		nua_handle_destroy(nh);
+		call_leg_release(&leg->base);
+		return;
+	}
 
 	leg->base.release_call = sip_release_call;
 	leg->base.ring_call = sip_ring_call;
