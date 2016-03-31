@@ -264,6 +264,7 @@ static void sip_connect_call(struct call_leg *_leg)
 
 	leg->state = SIP_CC_CONNECTED;
 	nua_respond(leg->nua_handle, SIP_200_OK,
+			NUTAG_MEDIA_ENABLE(0),
 			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
 			SIPTAG_PAYLOAD_STR(sdp),
 			TAG_END());
