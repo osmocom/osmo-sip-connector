@@ -1,0 +1,23 @@
+Source: osmo-sip-connector
+Section: net
+Priority: optional
+Maintainer: Holger Hans Peter Freyther <holger@moiji-mobile.com>
+Build-Depends: debhelper (>= 7.0.0~), autotools-dev, pkg-config, libosmocore-dev, libsofia-sip-ua-glib-dev, libsofia-sip-ua-dev, dh-systemd (>= 1.5)
+Standards-Version: 3.8.4
+Homepage: http://openbsc.osmocom.org/
+Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
+Vcs-Browser: http://openbsc.osmocom.org/trac/browser
+
+Package: osmo-sip-connector
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: MNCC to SIP bridge for osmo-nitb
+ Use the osmo-nitb MNCC interface and bridge it to SIP.
+
+Package: osmo-sip-connector-dbg
+Architecture: any
+Section: debug
+Priority: extra
+Depends: osmo-sip-connector (= ${binary:Version}), ${misc:Depends}
+Description: Debug symbols for the osmo-sip-connector
+ Make debugging possible

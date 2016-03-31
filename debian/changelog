@@ -1,0 +1,5 @@
+osmo-sip-connector (1) UNRELEASED; urgency=medium
+
+  * Initial release.
+
+ -- Holger Hans Peter Freyther <holger@moiji-mobile.com>  Thu, 31 Mar 2016 18:33:30 +0200
