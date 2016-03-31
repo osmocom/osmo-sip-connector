@@ -195,9 +195,15 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	case MNCC_CC_INITIAL:
 		LOGP(DMNCC, LOGL_DEBUG,
 			"Releasing call in initial-state leg(%u)\n", leg->callref);
-		mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
-		osmo_timer_del(&leg->cmd_timeout);
-		call_leg_release(_leg);
+		if (leg->dir == MNCC_DIR_MO) {
+			mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
+			osmo_timer_del(&leg->cmd_timeout);
+			call_leg_release(_leg);
+		} else {
+			leg->base.in_release = true;
+			start_cmd_timer(leg, MNCC_REL_CNF);
+			mncc_send(leg->conn, MNCC_REL_REQ, leg->callref);
+		}
 		break;
 	case MNCC_CC_PROCEEDING:
 	case MNCC_CC_CONNECTED:
@@ -369,6 +375,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	leg->callref = data->callref;
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
+	leg->dir = MNCC_DIR_MO;
 	memcpy(&leg->called, &data->called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
@@ -536,6 +543,7 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
 
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
+	leg->dir = MNCC_DIR_MT;
 
 	mncc.msg_type = MNCC_SETUP_REQ;
 	mncc.callref = leg->callref;

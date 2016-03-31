@@ -101,10 +101,17 @@ enum mncc_cc_state {
 	MNCC_CC_CONNECTED,
 };
 
+enum mncc_dir {
+	MNCC_DIR_MO,
+	MNCC_DIR_MT,
+};
+
 struct mncc_call_leg {
 	struct call_leg base;
 
 	enum mncc_cc_state state;
+	enum mncc_dir dir;
+
 	uint32_t callref;
 	struct gsm_mncc_number called;
 	struct gsm_mncc_number calling;
