@@ -148,7 +148,7 @@ static void mncc_call_leg_connect(struct call_leg *_leg)
 	 */
 	mncc.msg_type = MNCC_RTP_CONNECT;
 	mncc.callref = leg->callref;
-	mncc.ip = other->ip;
+	mncc.ip = htonl(other->ip);
 	mncc.port = other->port;
 	mncc.payload_type = other->payload_type;
 	/*
