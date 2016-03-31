@@ -167,6 +167,7 @@ static void mncc_call_leg_connect(struct call_leg *_leg)
 	leg = (struct mncc_call_leg *) _leg;
 
 	other = call_leg_other(_leg);
+	OSMO_ASSERT(other);
 
 	if (!send_rtp_connect(leg, other))
 		return;
