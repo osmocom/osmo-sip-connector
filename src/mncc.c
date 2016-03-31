@@ -130,17 +130,10 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 	}
 }
 
-static void mncc_call_leg_connect(struct call_leg *_leg)
+static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
-	struct mncc_call_leg *leg;
-	struct call_leg *other;
 	int rc;
-
-	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
-	leg = (struct mncc_call_leg *) _leg;
-
-	other = call_leg_other(_leg);
 
 	/*
 	 * Send RTP CONNECT and we handle the general failure of it by
@@ -160,8 +153,23 @@ static void mncc_call_leg_connect(struct call_leg *_leg)
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
 			leg->callref);
 		close_connection(leg->conn);
-		return;
+		return false;
 	}
+	return true;
+}
+
+static void mncc_call_leg_connect(struct call_leg *_leg)
+{
+	struct mncc_call_leg *leg;
+	struct call_leg *other;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
+	leg = (struct mncc_call_leg *) _leg;
+
+	other = call_leg_other(_leg);
+
+	if (!send_rtp_connect(leg, other))
+		return;
 
 	start_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
 	mncc_send(leg->conn, MNCC_SETUP_RSP, leg->callref);
@@ -230,7 +238,7 @@ static void close_connection(struct mncc_connection *conn)
 		conn->on_disconnect(conn);
 }
 
-static void continue_call(struct mncc_call_leg *leg)
+static void continue_mo_call(struct mncc_call_leg *leg)
 {
 	char *dest, *source;
 
@@ -247,6 +255,26 @@ static void continue_call(struct mncc_call_leg *leg)
 	app_route_call(leg->base.call, source, dest);
 	talloc_free(source);
 	talloc_free(dest);
+}
+
+static void continue_mt_call(struct mncc_call_leg *leg)
+{
+	struct call_leg *other_leg;
+
+	/* TODO.. check codec selection */
+	other_leg = call_leg_other(&leg->base);
+	if (!other_leg)
+		return;
+
+	/* assume the type is compatible */
+	other_leg->payload_type = leg->base.payload_type;
+}
+
+static void continue_call(struct mncc_call_leg *leg)
+{
+	if (leg->dir == MNCC_DIR_MO)
+		return continue_mo_call(leg);
+	return continue_mt_call(leg);
 }
 
 static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
@@ -497,6 +525,75 @@ static void check_rej_ind(struct mncc_connection *conn, char *buf, int rc)
 	call_leg_release(&leg->base);
 }
 
+static void check_cnf_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG,
+		"leg(%u) confirmend. creating RTP socket.\n",
+		leg->callref);
+
+	start_cmd_timer(leg, MNCC_RTP_CREATE);
+	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
+}
+
+static void check_alrt_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG,
+		"leg(%u) is alerting.\n", leg->callref);
+
+	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) other leg gone!\n",
+			leg->callref);
+		mncc_call_leg_release(&leg->base);
+		return;
+	}
+
+	other_leg->ring_call(other_leg);
+}
+
+static void check_stp_cnf(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) setup completed\n", leg->callref);
+
+	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) other leg gone!\n",
+			leg->callref);
+		mncc_call_leg_release(&leg->base);
+		return;
+	}
+
+	if (!send_rtp_connect(leg, other_leg))
+		return;
+	leg->state = MNCC_CC_CONNECTED;
+	mncc_send(leg->conn, MNCC_SETUP_COMPL_REQ, leg->callref);
+
+	other_leg->connect_call(other_leg);
+}
+
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_hello *hello;
@@ -642,6 +739,15 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_SETUP_COMPL_IND:
 		check_stp_cmpl_ind(conn, buf, rc);
+		break;
+	case MNCC_SETUP_CNF:
+		check_stp_cnf(conn, buf, rc);
+		break;
+	case MNCC_CALL_CONF_IND:
+		check_cnf_ind(conn, buf, rc);
+		break;
+	case MNCC_ALERT_IND:
+		check_alrt_ind(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",
