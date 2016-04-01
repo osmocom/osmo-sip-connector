@@ -99,6 +99,8 @@ static int config_write_mncc(struct vty *vty)
 static int config_write_app(struct vty *vty)
 {
 	vty_out(vty, "app%s", VTY_NEWLINE);
+	if (g_app.use_imsi_as_id)
+		vty_out(vty, " use-imsi%s", VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -153,6 +155,22 @@ DEFUN(cfg_app, cfg_app_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_use_imsi, cfg_use_imsi_cmd,
+	"use-imsi",
+	"Use the IMSI for MO calling and MT called address\n")
+{
+	g_app.use_imsi_as_id = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_no_use_imsi, cfg_no_use_imsi_cmd,
+	"no use-imsi",
+	NO_STR "Use the IMSI for MO calling and MT called address\n")
+{
+	g_app.use_imsi_as_id = 0;
+	return CMD_SUCCESS;
+}
+
 void mncc_sip_vty_init(void)
 {
 	/* default values */
@@ -176,4 +194,6 @@ void mncc_sip_vty_init(void)
 
 	install_element(CONFIG_NODE, &cfg_app_cmd);
 	install_node(&app_node, config_write_app);
+	install_element(APP_NODE, &cfg_use_imsi_cmd);
+	install_element(APP_NODE, &cfg_no_use_imsi_cmd);
 }

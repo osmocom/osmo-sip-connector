@@ -20,7 +20,7 @@ struct app_config {
 		struct mncc_connection conn;
 	} mncc;
 
-	//int use_imsi_as_id;
+	int use_imsi_as_id;
 };
 
 extern struct app_config g_app;

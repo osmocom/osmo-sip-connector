@@ -251,7 +251,11 @@ static void continue_mo_call(struct mncc_call_leg *leg)
 		dest = talloc_asprintf(tall_mncc_ctx, "+%.32s", leg->called.number);
 	else
 		dest = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->called.number);
-	source = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->calling.number);
+
+	if (leg->conn->app->use_imsi_as_id)
+		source = talloc_asprintf(tall_mncc_ctx, "%.16s", leg->imsi);
+	else
+		source = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->calling.number);
 
 	app_route_call(leg->base.call, source, dest);
 	talloc_free(source);
@@ -651,10 +655,14 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
 	mncc.calling.type = 0x0;
 	memcpy(&mncc.calling.number, calling, sizeof(mncc.calling.number));
 
-	mncc.fields |= MNCC_F_CALLED;
-	mncc.called.plan = 1;
-	mncc.called.type = 0x0;
-	memcpy(&mncc.called.number, called, sizeof(mncc.called.number));
+	if (conn->app->use_imsi_as_id) {
+		snprintf(mncc.imsi, 16, called);
+	} else {
+		mncc.fields |= MNCC_F_CALLED;
+		mncc.called.plan = 1;
+		mncc.called.type = 0x0;
+		memcpy(&mncc.called.number, called, sizeof(mncc.called.number));
+	}
 
 	/*
 	 * TODO/FIXME:
