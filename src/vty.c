@@ -172,6 +172,68 @@ DEFUN(cfg_no_use_imsi, cfg_no_use_imsi_cmd,
 	return CMD_SUCCESS;
 }
 
+static void dump_leg(struct vty *vty, struct call_leg *leg, const char *kind)
+{
+	struct sip_call_leg *sip;
+	struct mncc_call_leg *mncc;
+
+	if (!leg)
+		return;
+
+	vty_out(vty, " %s leg of type: %s%s",
+		kind,
+		get_value_string(call_type_vals, leg->type),
+		VTY_NEWLINE);
+
+	switch (leg->type) {
+	case CALL_TYPE_SIP:
+		sip = (struct sip_call_leg *) leg;
+		vty_out(vty, " SIP nua_handle(%p)%s", sip->nua_handle, VTY_NEWLINE);
+		vty_out(vty, " SIP state(%s)%s",
+				get_value_string(sip_state_vals, sip->state), VTY_NEWLINE);
+		vty_out(vty, " SIP dir(%s)%s",
+				get_value_string(sip_dir_vals, sip->dir), VTY_NEWLINE);
+		vty_out(vty, " SIP wanted_codec(%s)%s", sip->wanted_codec, VTY_NEWLINE);
+		break;
+	case CALL_TYPE_MNCC:
+		mncc = (struct mncc_call_leg *) leg;
+		vty_out(vty, " MNCC state(%s)%s",
+				get_value_string(mncc_state_vals, mncc->state), VTY_NEWLINE);
+		vty_out(vty, " MNCC dir(%s)%s",
+				get_value_string(mncc_dir_vals, mncc->dir), VTY_NEWLINE);
+		vty_out(vty, " MNCC callref(%u)%s", mncc->callref, VTY_NEWLINE);
+		vty_out(vty, " MNCC called TON(%d) NPI(%d) NUM(%.32s)%s",
+				mncc->called.type, mncc->called.plan, mncc->called.number,
+				VTY_NEWLINE);
+		vty_out(vty, " MNCC calling TON(%d) NPI(%d) NUM(%.32s)%s",
+				mncc->calling.type, mncc->calling.plan, mncc->calling.number,
+				VTY_NEWLINE);
+		vty_out(vty, " MNCC imsi(%.16s)%s", mncc->imsi, VTY_NEWLINE);
+		vty_out(vty, " MNCC timer pending(%d)%s",
+				osmo_timer_pending(&mncc->cmd_timeout), VTY_NEWLINE);
+		break;
+	default:
+		vty_out(vty, " Unhandled type: %d%s", leg->type, VTY_NEWLINE);
+		break;
+	}
+}
+
+DEFUN(show_calls, show_calls_cmd,
+	"show calls",
+	SHOW_STR "Current calls\n")
+{
+	struct call *call;
+
+	llist_for_each_entry(call, &g_call_list, entry) {
+		vty_out(vty, "Call(%u) from %s to %s%s",
+			call->id, call->source, call->dest, VTY_NEWLINE);
+		dump_leg(vty, call->initial, "Initial");
+		dump_leg(vty, call->remote, "Remote");
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_calls_sum, show_calls_sum_cmd,
 	"show calls summary",
 	SHOW_STR "Current calls\nBrief overview\n")
@@ -238,5 +300,6 @@ void mncc_sip_vty_init(void)
 	install_element(APP_NODE, &cfg_use_imsi_cmd);
 	install_element(APP_NODE, &cfg_no_use_imsi_cmd);
 
+	install_element_ve(&show_calls_cmd);
 	install_element_ve(&show_calls_sum_cmd);
 }
