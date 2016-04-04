@@ -59,25 +59,35 @@ void app_setup(struct app_config *cfg)
 	cfg->mncc.conn.on_disconnect = app_mncc_disconnected;
 }
 
-static void route_to_sip(struct call *call, const char *source, const char *dest)
+static void route_to_sip(struct call *call)
 {
-	if (sip_create_remote_leg(&g_app.sip.agent, call, source, dest) != 0)
+	if (sip_create_remote_leg(&g_app.sip.agent, call) != 0)
 		call->initial->release_call(call->initial);
 }
 
-static void route_to_mncc(struct call *call, const char *source,
-		const char *dest)
+static void route_to_mncc(struct call *call)
 {
-	if (mncc_create_remote_leg(&g_app.mncc.conn, call, source, dest) != 0)
+	if (mncc_create_remote_leg(&g_app.mncc.conn, call) != 0)
 		call->initial->release_call(call->initial);
 }
 
 void app_route_call(struct call *call, const char *source, const char *dest)
 {
+
+	if (!source || !dest) {
+		LOGP(DAPP, LOGL_ERROR, "call(%u) missing source(%p)/dest(%p)\n",
+			call->id, source, dest);
+		call->initial->release_call(call->initial);
+		return;
+	}
+
+	call->source = source;
+	call->dest = dest;
+
 	if (call->initial->type == CALL_TYPE_MNCC)
-		route_to_sip(call, source, dest);
+		route_to_sip(call);
 	else
-		route_to_mncc(call, source, dest);
+		route_to_mncc(call);
 }
 
 const char *app_media_name(int ptmsg)

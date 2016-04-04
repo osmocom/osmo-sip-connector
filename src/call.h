@@ -27,6 +27,9 @@ struct call {
 	unsigned int id;
 	struct call_leg *initial;
 	struct call_leg *remote;
+
+	const char *source;
+	const char *dest;
 };
 
 enum {

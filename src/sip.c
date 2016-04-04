@@ -136,7 +136,9 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	nua_handle_bind(nh, leg);
 	leg->sdp_payload = talloc_strdup(leg, sip->sip_payload->pl_data);
 
-	app_route_call(call, from, to);
+	app_route_call(call,
+			talloc_strdup(leg, from),
+			talloc_strdup(leg, to));
 }
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
@@ -316,8 +318,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	return 0;
 }
 
-int sip_create_remote_leg(struct sip_agent *agent, struct call *call,
-				const char *source, const char *dest)
+int sip_create_remote_leg(struct sip_agent *agent, struct call *call)
 {
 	struct sip_call_leg *leg;
 
@@ -341,7 +342,7 @@ int sip_create_remote_leg(struct sip_agent *agent, struct call *call,
 		return -2;
 	}
 
-	return send_invite(agent, leg, source, dest);
+	return send_invite(agent, leg, call->source, call->dest);
 }
 
 char *make_sip_uri(struct sip_agent *agent)

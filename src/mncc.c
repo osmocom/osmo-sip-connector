@@ -254,18 +254,16 @@ static void continue_mo_call(struct mncc_call_leg *leg)
 	leg->state = MNCC_CC_PROCEEDING;
 
 	if (leg->called.type == GSM340_TYPE_INTERNATIONAL)
-		dest = talloc_asprintf(tall_mncc_ctx, "+%.32s", leg->called.number);
+		dest = talloc_asprintf(leg, "+%.32s", leg->called.number);
 	else
-		dest = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->called.number);
+		dest = talloc_asprintf(leg, "%.32s", leg->called.number);
 
 	if (leg->conn->app->use_imsi_as_id)
-		source = talloc_asprintf(tall_mncc_ctx, "%.16s", leg->imsi);
+		source = talloc_asprintf(leg, "%.16s", leg->imsi);
 	else
-		source = talloc_asprintf(tall_mncc_ctx, "%.32s", leg->calling.number);
+		source = talloc_asprintf(leg, "%.32s", leg->calling.number);
 
 	app_route_call(leg->base.call, source, dest);
-	talloc_free(source);
-	talloc_free(dest);
 }
 
 static void continue_mt_call(struct mncc_call_leg *leg)
@@ -641,8 +639,7 @@ static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 	conn->state = MNCC_READY;
 }
 
-int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
-			const char *calling, const char *called)
+int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 {
 	struct mncc_call_leg *leg;
 	struct gsm_mncc mncc = { 0, };
@@ -673,15 +670,15 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
 	mncc.fields |= MNCC_F_CALLING;
 	mncc.calling.plan = 1;
 	mncc.calling.type = 0x0;
-	memcpy(&mncc.calling.number, calling, sizeof(mncc.calling.number));
+	memcpy(&mncc.calling.number, call->source, sizeof(mncc.calling.number));
 
 	if (conn->app->use_imsi_as_id) {
-		snprintf(mncc.imsi, 15, "%s", called);
+		snprintf(mncc.imsi, 15, "%s", call->dest);
 	} else {
 		mncc.fields |= MNCC_F_CALLED;
 		mncc.called.plan = 1;
 		mncc.called.type = 0x0;
-		memcpy(&mncc.called.number, called, sizeof(mncc.called.number));
+		memcpy(&mncc.called.number, call->dest, sizeof(mncc.called.number));
 	}
 
 	/*
