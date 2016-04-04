@@ -676,7 +676,7 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call,
 	memcpy(&mncc.calling.number, calling, sizeof(mncc.calling.number));
 
 	if (conn->app->use_imsi_as_id) {
-		snprintf(mncc.imsi, 15, called);
+		snprintf(mncc.imsi, 15, "%s", called);
 	} else {
 		mncc.fields |= MNCC_F_CALLED;
 		mncc.called.plan = 1;
