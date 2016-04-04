@@ -20,6 +20,7 @@
 
 #include "vty.h"
 #include "app.h"
+#include "call.h"
 
 #include <talloc.h>
 
@@ -171,6 +172,46 @@ DEFUN(cfg_no_use_imsi, cfg_no_use_imsi_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_calls_sum, show_calls_sum_cmd,
+	"show calls summary",
+	SHOW_STR "Current calls\n")
+{
+	struct call *call;
+
+	llist_for_each_entry(call, &g_call_list, entry) {
+		char *initial_type, *initial_state;
+		char *remote_type, *remote_state;
+
+		initial_type = initial_state = NULL;
+		remote_type = remote_state = NULL;
+
+		if (call->initial) {
+			initial_type = talloc_strdup(tall_mncc_ctx,
+						call_leg_type(call->initial));
+			initial_state = talloc_strdup(tall_mncc_ctx,
+						call_leg_state(call->initial));
+		}
+
+		if (call->remote) {
+			remote_type = talloc_strdup(tall_mncc_ctx,
+						call_leg_type(call->remote));
+			remote_state = talloc_strdup(tall_mncc_ctx,
+						call_leg_state(call->remote));
+		}
+
+		vty_out(vty, "Call(%u) initial(type=%s,state=%s) remote(type=%s,state=%s)%s",
+			call->id, initial_type, initial_state, remote_type, remote_state,
+			VTY_NEWLINE);
+
+		talloc_free(initial_type);
+		talloc_free(initial_state);
+		talloc_free(remote_type);
+		talloc_free(remote_state);
+	}
+
+	return CMD_SUCCESS;
+}
+
 void mncc_sip_vty_init(void)
 {
 	/* default values */
@@ -196,4 +237,6 @@ void mncc_sip_vty_init(void)
 	install_node(&app_node, config_write_app);
 	install_element(APP_NODE, &cfg_use_imsi_cmd);
 	install_element(APP_NODE, &cfg_no_use_imsi_cmd);
+
+	install_element_ve(&show_calls_sum_cmd);
 }

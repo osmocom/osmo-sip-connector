@@ -4,6 +4,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/utils.h>
 
 #include <stdbool.h>
 
@@ -133,3 +134,12 @@ void call_leg_release(struct call_leg *leg);
 
 struct call *call_mncc_create(void);
 struct call *call_sip_create(void);
+
+const char *call_leg_type(struct call_leg *leg);
+const char *call_leg_state(struct call_leg *leg);
+
+extern const struct value_string call_type_vals[];
+extern const struct value_string mncc_state_vals[];
+extern const struct value_string mncc_dir_vals[];
+extern const struct value_string sip_state_vals[];
+extern const struct value_string sip_dir_vals[];

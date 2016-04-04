@@ -28,6 +28,40 @@ extern void *tall_mncc_ctx;
 LLIST_HEAD(g_call_list);
 static uint32_t last_call_id = 5000;
 
+
+const struct value_string call_type_vals[] = {
+	{ CALL_TYPE_NONE,		"NONE" },
+	{ CALL_TYPE_SIP,		"SIP"  },
+	{ CALL_TYPE_MNCC,		"MNCC" },
+	{ 0, NULL },
+};
+
+const struct value_string mncc_state_vals[] = {
+	{ MNCC_CC_INITIAL,		"INITIAL"    },
+	{ MNCC_CC_PROCEEDING,		"PROCEEDING" },
+	{ MNCC_CC_CONNECTED,		"CONNECTED"  },
+	{ 0, NULL },
+};
+
+const struct value_string mncc_dir_vals[] = {
+	{ MNCC_DIR_MO,			"MO" },
+	{ MNCC_DIR_MT,			"MT" },
+	{ 0, NULL },
+};
+
+const struct value_string sip_state_vals[] = {
+	{ SIP_CC_INITIAL,		"INITIAL"   },
+	{ SIP_CC_DLG_CNFD,		"CONFIRMED" },
+	{ SIP_CC_CONNECTED,		"CONNECTED" },
+	{ 0, NULL },
+};
+
+const struct value_string sip_dir_vals[] = {
+	{ SIP_DIR_MO,	"MO" },
+	{ SIP_DIR_MT,	"MT" },
+	{ 0, NULL },
+};
+
 void calls_init(void)
 {}
 
@@ -113,4 +147,26 @@ struct call_leg *call_leg_other(struct call_leg *leg)
 	LOGP(DAPP, LOGL_NOTICE, "leg(0x%p) not belonging to call(%u)\n",
 		leg, leg->call->id);
 	return NULL;
+}
+
+const char *call_leg_type(struct call_leg *leg)
+{
+	return get_value_string(call_type_vals, leg->type);
+}
+
+const char *call_leg_state(struct call_leg *leg)
+{
+	struct mncc_call_leg *mncc;
+	struct sip_call_leg *sip;
+
+	switch (leg->type) {
+	case CALL_TYPE_SIP:
+		sip = (struct sip_call_leg *) leg;
+		return get_value_string(sip_state_vals, sip->state);
+	case CALL_TYPE_MNCC:
+		mncc = (struct mncc_call_leg *) leg;
+		return get_value_string(mncc_state_vals, mncc->state);
+	default:
+		return "unknown call type";
+	}
 }
