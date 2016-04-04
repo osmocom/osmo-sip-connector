@@ -39,6 +39,12 @@ extern void *tall_mncc_ctx;
 
 static void close_connection(struct mncc_connection *conn);
 
+static void mncc_leg_release(struct mncc_call_leg *leg)
+{
+	osmo_timer_del(&leg->cmd_timeout);
+	call_leg_release(&leg->base);
+}
+
 static void cmd_timeout(void *data)
 {
 	struct mncc_call_leg *leg = data;
@@ -50,7 +56,7 @@ static void cmd_timeout(void *data)
 	other_leg = call_leg_other(&leg->base);
 	if (other_leg)
 		other_leg->release_call(other_leg);
-	call_leg_release(&leg->base);
+	mncc_leg_release(leg);
 }
 
 static void start_cmd_timer(struct mncc_call_leg *leg, uint32_t expected_next)
@@ -197,7 +203,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	if (leg->conn->state != MNCC_READY) {
 		LOGP(DMNCC, LOGL_DEBUG,
 			"MNCC not connected releasing leg leg(%u)\n", leg->callref);
-		return call_leg_release(_leg);
+		return mncc_leg_release(leg);
 	}
 
 	switch (leg->state) {
@@ -207,7 +213,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 		if (leg->dir == MNCC_DIR_MO) {
 			mncc_send(leg->conn, MNCC_REJ_REQ, leg->callref);
 			osmo_timer_del(&leg->cmd_timeout);
-			call_leg_release(_leg);
+			mncc_leg_release(leg);
 		} else {
 			leg->base.in_release = true;
 			start_cmd_timer(leg, MNCC_REL_CNF);
@@ -482,7 +488,7 @@ static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
 			other_leg->release_call(other_leg);
 	}
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n", data->callref);
-	call_leg_release(&leg->base);
+	mncc_leg_release(leg);
 }
 
 static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
@@ -496,7 +502,7 @@ static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
 
 	stop_cmd_timer(leg, MNCC_REL_CNF);
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was cnf released.\n", data->callref);
-	call_leg_release(&leg->base);
+	mncc_leg_release(leg);
 }
 
 static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
@@ -527,7 +533,7 @@ static void check_rej_ind(struct mncc_connection *conn, char *buf, int rc)
 	if (other_leg)
 		other_leg->release_call(other_leg);
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected.\n", data->callref);
-	call_leg_release(&leg->base);
+	mncc_leg_release(leg);
 }
 
 static void check_cnf_ind(struct mncc_connection *conn, char *buf, int rc)
