@@ -174,7 +174,7 @@ DEFUN(cfg_no_use_imsi, cfg_no_use_imsi_cmd,
 
 DEFUN(show_calls_sum, show_calls_sum_cmd,
 	"show calls summary",
-	SHOW_STR "Current calls\n")
+	SHOW_STR "Current calls\nBrief overview\n")
 {
 	struct call *call;
 
