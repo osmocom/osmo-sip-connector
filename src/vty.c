@@ -21,6 +21,7 @@
 #include "vty.h"
 #include "app.h"
 #include "call.h"
+#include "mncc.h"
 
 #include <talloc.h>
 
@@ -274,6 +275,17 @@ DEFUN(show_calls_sum, show_calls_sum_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_mncc_conn, show_mncc_conn_cmd,
+	"show mncc-connection",
+	SHOW_STR "MNCC Connection state\n")
+{
+	vty_out(vty, "MNCC connection to path '%s' is in state %s%s",
+		g_app.mncc.path,
+		get_value_string(mncc_conn_state_vals, g_app.mncc.conn.state),
+		VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 void mncc_sip_vty_init(void)
 {
 	/* default values */
@@ -302,4 +314,5 @@ void mncc_sip_vty_init(void)
 
 	install_element_ve(&show_calls_cmd);
 	install_element_ve(&show_calls_sum_cmd);
+	install_element_ve(&show_mncc_conn_cmd);
 }

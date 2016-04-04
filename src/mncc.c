@@ -805,3 +805,10 @@ void mncc_connection_start(struct mncc_connection *conn)
 	LOGP(DMNCC, LOGL_NOTICE, "Scheduling MNCC connect\n");
 	osmo_timer_schedule(&conn->reconnect, 0, 0);
 }
+
+const struct value_string mncc_conn_state_vals[] = {
+	{ MNCC_DISCONNECTED,	"DISCONNECTED"	},
+	{ MNCC_WAIT_VERSION,	"WAITING"	},
+	{ MNCC_READY,		"READY"		},
+	{ 0, NULL },
+};

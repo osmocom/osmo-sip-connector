@@ -2,6 +2,7 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/core/utils.h>
 
 #include <stdint.h>
 
@@ -31,3 +32,5 @@ void mncc_connection_init(struct mncc_connection *conn, struct app_config *cfg);
 void mncc_connection_start(struct mncc_connection *conn);
 
 int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call);
+
+extern const struct value_string mncc_conn_state_vals[];
