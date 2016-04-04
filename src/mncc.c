@@ -577,6 +577,20 @@ static void check_alrt_ind(struct mncc_connection *conn, char *buf, int rc)
 	other_leg->ring_call(other_leg);
 }
 
+static void check_hold_ind(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG,
+		"leg(%u) is req hold. rejecting.\n", leg->callref);
+	mncc_send(leg->conn, MNCC_HOLD_REJ, leg->callref);
+}
+
 static void check_stp_cnf(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc *data;
@@ -763,6 +777,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_ALERT_IND:
 		check_alrt_ind(conn, buf, rc);
+		break;
+	case MNCC_HOLD_IND:
+		check_hold_ind(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",
