@@ -135,8 +135,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	LOGP(DAPP, LOGL_NOTICE, "VTY at %s %d\n",
-		vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
 	rc = telnet_init_dynif(tall_mncc_ctx, NULL,
 				vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
 	if (rc < 0)
