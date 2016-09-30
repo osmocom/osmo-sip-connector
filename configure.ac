@@ -7,6 +7,13 @@ AC_CONFIG_AUX_DIR([.])
 
 AM_INIT_AUTOMAKE([dist-bzip2])
 
+dnl check for pkg-config (explained in detail in libosmocore/configure.ac)
+AC_PATH_PROG(PKG_CONFIG_INSTALLED, pkg-config, no)
+if test "x$PKG_CONFIG_INSTALLED" = "xno"; then
+        AC_MSG_WARN([You need to install pkg-config])
+fi
+PKG_PROG_PKG_CONFIG([0.20])
+
 dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_PROG_CC
