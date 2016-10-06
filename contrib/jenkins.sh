@@ -2,20 +2,31 @@
 
 set -ex
 
-rm -rf deps/install
-mkdir deps || true
-cd deps
-osmo-deps.sh libosmocore
+base="$PWD"
+deps="$base/deps"
+inst="$deps/install"
+export deps inst
 
-cd libosmocore
+mkdir "$deps" || true
+rm -rf "$inst"
+
+osmo-build-dep.sh libosmocore
+
+export PKG_CONFIG_PATH="$inst/lib/pkgconfig:$PKG_CONFIG_PATH"
+export LD_LIBRARY_PATH="$inst/lib"
+
+set +x
+echo
+echo
+echo
+echo " =============================== osmo-sip-connector ==============================="
+echo
+set -x
+
 autoreconf --install --force
-./configure --prefix=$PWD/../install
-$MAKE $PARALLEL_MAKE install
-
-cd ../../
-autoreconf --install --force
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig ./configure --enable-vty-tests --enable-external-tests
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig $MAKE $PARALLEL_MAKE
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE check
-PKG_CONFIG_PATH=$PWD/deps/install/lib/pkgconfig LD_LIBRARY_PATH=$PWD/deps/install/lib $MAKE distcheck
-
+./configure --enable-vty-tests --enable-external-tests
+$MAKE $PARALLEL_MAKE
+$MAKE check \
+  || cat-testlogs.sh
+$MAKE distcheck \
+  || cat-testlogs.sh
