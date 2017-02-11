@@ -92,10 +92,11 @@ int evpoll(struct pollfd *fds, nfds_t nfds, int timeout)
 	osmo_fd_disp_fds(&readset, &writeset, &exceptset);
 
 	for (i = 0; i < nfds; ++i) {
+		fds[i].revents = 0;
+
 		if (fds[i].fd < 0)
 			continue;
 
-		fds[i].revents = 0;
 		if (FD_ISSET(fds[i].fd, &readset))
 			fds[i].revents = POLLIN;
 		if (FD_ISSET(fds[i].fd, &writeset))
