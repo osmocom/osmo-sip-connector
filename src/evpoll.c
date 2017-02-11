@@ -68,9 +68,9 @@ int evpoll(struct pollfd *fds, nfds_t nfds, int timeout)
 	 */
 	if (timeout == 0) {
 		tv = &null_tv;
-	} else if (timeout == -1)
+	} else if (timeout == -1) {
 		tv = osmo_timers_nearest();
-	else {
+	} else {
 		poll_tv.tv_sec = timeout / 1000;
 		poll_tv.tv_usec = (timeout % 1000) * 1000;
 
