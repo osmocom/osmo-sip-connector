@@ -43,15 +43,15 @@ int evpoll(struct pollfd *fds, nfds_t nfds, int timeout)
 	for (i = 0; i < nfds; ++i) {
 		if (fds[i].fd < 0)
 			continue;
-		if ((fds[i].events & (POLLIN | POLLOUT | POLLERR)) == 0)
+		if ((fds[i].events & (POLLIN | POLLOUT | POLLPRI)) == 0)
 			continue;
 
-		/* copy events, glib seems to map POLLPRI to exceptionset? */
+		/* copy events. Not sure why glib maps PRI to exceptionset */
 		if (fds[i].events & POLLIN)
 			FD_SET(fds[i].fd, &readset);
 		if (fds[i].events & POLLOUT)
 			FD_SET(fds[i].fd, &writeset);
-		if (fds[i].events & POLLERR)
+		if (fds[i].events & POLLPRI)
 			FD_SET(fds[i].fd, &exceptset);
 
 		if (fds[i].fd > maxfd)
@@ -102,7 +102,7 @@ int evpoll(struct pollfd *fds, nfds_t nfds, int timeout)
 		if (FD_ISSET(fds[i].fd, &writeset))
 			fds[i].revents |= POLLOUT;
 		if (FD_ISSET(fds[i].fd, &exceptset))
-			fds[i].revents |= POLLERR;
+			fds[i].revents |= POLLPRI;
 	}
 
 	return rc;
