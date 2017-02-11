@@ -156,7 +156,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		if (leg->state == SIP_CC_INITIAL)
 			leg->state = SIP_CC_DLG_CNFD;
 
-		if (status == 180)
+		if (status == 180 || status == 183)
 			call_progress(leg, sip);
 		else if (status == 200)
 			call_connect(leg, sip);
