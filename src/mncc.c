@@ -102,23 +102,33 @@ static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 	return NULL;
 }
 
-static void mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+static void mncc_fill_header(struct gsm_mncc *mncc, uint32_t msg_type, uint32_t callref)
+{
+	mncc->msg_type = msg_type;
+	mncc->callref = callref;
+}
+
+static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc, uint32_t callref)
 {
 	int rc;
-	struct gsm_mncc mncc = { 0, };
-
-	mncc.msg_type = msg_type;
-	mncc.callref = callref;
 
 	/*
 	 * TODO: we need to put cause in here for release or such? shall we return a
 	 * static struct?
 	 */
-	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
-	if (rc != sizeof(mncc)) {
+	rc = write(conn->fd.fd, mncc, sizeof(*mncc));
+	if (rc != sizeof(*mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
 		close_connection(conn);
 	}
+}
+
+static void mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+{
+	struct gsm_mncc mncc = { 0, };
+
+	mncc_fill_header(&mncc, msg_type, callref);
+	mncc_write(conn, &mncc, callref);
 }
 
 static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
@@ -617,6 +627,42 @@ static void check_stp_cnf(struct mncc_connection *conn, char *buf, int rc)
 	other_leg->connect_call(other_leg);
 }
 
+static void check_dtmf_start(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc out_mncc = { 0, };
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) DTMF key=%c\n", leg->callref, data->keypad);
+
+	mncc_fill_header(&out_mncc, MNCC_START_DTMF_RSP, leg->callref);
+	out_mncc.fields |= MNCC_F_KEYPAD;
+	out_mncc.keypad = data->keypad;
+	mncc_write(conn, &out_mncc, leg->callref);
+}
+
+static void check_dtmf_stop(struct mncc_connection *conn, char *buf, int rc)
+{
+	struct gsm_mncc out_mncc = { 0, };
+	struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) DTMF key=%c\n", leg->callref, data->keypad);
+
+	mncc_fill_header(&out_mncc, MNCC_STOP_DTMF_RSP, leg->callref);
+	out_mncc.fields |= MNCC_F_KEYPAD;
+	out_mncc.keypad = data->keypad;
+	mncc_write(conn, &out_mncc, leg->callref);
+}
+
 static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_hello *hello;
@@ -777,6 +823,12 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_HOLD_IND:
 		check_hold_ind(conn, buf, rc);
+		break;
+	case MNCC_START_DTMF_IND:
+		check_dtmf_start(conn, buf, rc);
+		break;
+	case MNCC_STOP_DTMF_IND:
+		check_dtmf_stop(conn, buf, rc);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_ERROR, "Unhandled message type %d/0x%x\n",
