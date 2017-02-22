@@ -37,6 +37,7 @@ extern void *tall_mncc_ctx;
 static void sip_release_call(struct call_leg *_leg);
 static void sip_ring_call(struct call_leg *_leg);
 static void sip_connect_call(struct call_leg *_leg);
+static void sip_dtmf_call(struct call_leg *_leg, int keypad);
 
 static void call_progress(struct sip_call_leg *leg, const sip_t *sip)
 {
@@ -131,6 +132,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	leg->base.release_call = sip_release_call;
 	leg->base.ring_call = sip_ring_call;
 	leg->base.connect_call = sip_connect_call;
+	leg->base.dtmf = sip_dtmf_call;
 	leg->agent = agent;
 	leg->nua_handle = nh;
 	nua_handle_bind(nh, leg);
@@ -288,6 +290,22 @@ static void sip_connect_call(struct call_leg *_leg)
 	talloc_free(sdp);
 }
 
+static void sip_dtmf_call(struct call_leg *_leg, int keypad)
+{
+	struct sip_call_leg *leg;
+	char *buf;
+
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+
+	buf = talloc_asprintf(leg, "Signal=%c\nDuration=160\n", keypad);
+	nua_info(leg->nua_handle,
+		NUTAG_MEDIA_ENABLE(0),
+		SIPTAG_CONTENT_TYPE_STR("application/dtmf-relay"),
+		SIPTAG_PAYLOAD_STR(buf), TAG_END());
+	talloc_free(buf);
+}
+
 static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
@@ -334,6 +352,7 @@ int sip_create_remote_leg(struct sip_agent *agent, struct call *call)
 	leg->base.type = CALL_TYPE_SIP;
 	leg->base.call = call;
 	leg->base.release_call = sip_release_call;
+	leg->base.dtmf = sip_dtmf_call;
 	leg->agent = agent;
 
 	leg->nua_handle = nua_handle(agent->nua, leg, TAG_END());

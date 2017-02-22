@@ -632,12 +632,17 @@ static void check_dtmf_start(struct mncc_connection *conn, char *buf, int rc)
 	struct gsm_mncc out_mncc = { 0, };
 	struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
 
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
 
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) DTMF key=%c\n", leg->callref, data->keypad);
+
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg && other_leg->dtmf)
+		other_leg->dtmf(other_leg, data->keypad);
 
 	mncc_fill_header(&out_mncc, MNCC_START_DTMF_RSP, leg->callref);
 	out_mncc.fields |= MNCC_F_KEYPAD;

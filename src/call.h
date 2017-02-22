@@ -67,6 +67,11 @@ struct call_leg {
 	 * by the application to release the call.
 	 */
 	void (*release_call)(struct call_leg *);
+
+	/**
+	 * A DTMF key was entered. Forward it.
+	 */
+	void (*dtmf)(struct call_leg *, int keypad);
 };
 
 enum sip_cc_state {
