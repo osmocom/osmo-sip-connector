@@ -1,0 +1,29 @@
+Provide a semi-stable remote PBX system.
+
+There is no preferred PBX but YaTE is pretty small and still
+functional enough. Anyway Rhizomatica is using FreeSWITCH so
+let's use that for testing.
+
+This is creating a docker image with a SIP configuration that
+will allow to record audio, have a DTMF menu using some fixed
+numbers. Feel free to extend it to support bidirectional calls
+and routing.
+
+It is using the Debian packages and installs everything as I
+am not interested to track dependencies and see what is missing.
+Again feel free to optimize the size.
+
+
+Build:
+	make
+
+	or
+
+	docker build -t yourimagename:tag .
+
+
+Run:
+
+	docker run yourimagename:tag
+
+SIP is exposed on 5060 of your port and audio on 6000-6020
