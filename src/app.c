@@ -29,6 +29,7 @@ void app_mncc_disconnected(struct mncc_connection *conn)
 	struct call *call, *tmp;
 
 	llist_for_each_entry_safe(call, tmp, &g_call_list, entry) {
+		struct call_leg *initial, *remote;
 		int has_mncc = 0;
 
 		if (call->initial && call->initial->type == CALL_TYPE_MNCC)
@@ -40,14 +41,20 @@ void app_mncc_disconnected(struct mncc_connection *conn)
 			continue;
 
 		/*
-		 * this call has a MNCC component and we will release it.
+		 * this call has a MNCC component and we will release it now.
+		 * There might be no remote so on the release of the initial
+		 * leg the call might be gone. We may not touch call beyond
+		 * that point.
 		 */
 		LOGP(DAPP, LOGL_NOTICE,
 			"Going to release call(%u) due MNCC.\n", call->id);
-		if (call->initial)
-			call->initial->release_call(call->initial);
-		if (call->remote)
-			call->remote->release_call(call->remote);
+		initial = call->initial;
+		remote = call->remote;
+		call = NULL;
+		if (initial)
+			initial->release_call(initial);
+		if (remote)
+			remote->release_call(remote);
 	}
 }
 
