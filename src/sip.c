@@ -293,12 +293,14 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 {
 	struct call_leg *other = leg->base.call->initial;
 
-	char *from = talloc_asprintf(leg, "sip:%s@%s",
+	char *from = talloc_asprintf(leg, "sip:%s@%s:%d",
 				calling_num,
-				agent->app->sip.local_addr);
-	char *to = talloc_asprintf(leg, "sip:%s@%s",
+				agent->app->sip.local_addr,
+				agent->app->sip.local_port);
+	char *to = talloc_asprintf(leg, "sip:%s@%s:%d",
 				called_num,
-				agent->app->sip.remote_addr);
+				agent->app->sip.remote_addr,
+				agent->app->sip.remote_port);
 	char *sdp = sdp_create_file(leg, other);
 
 	leg->state = SIP_CC_INITIAL;
