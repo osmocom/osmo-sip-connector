@@ -98,7 +98,7 @@ int evpoll(struct pollfd *fds, nfds_t nfds, int timeout)
 			continue;
 
 		if (FD_ISSET(fds[i].fd, &readset))
-			fds[i].revents = POLLIN;
+			fds[i].revents = POLLIN | POLLERR;
 		if (FD_ISSET(fds[i].fd, &writeset))
 			fds[i].revents |= POLLOUT;
 		if (FD_ISSET(fds[i].fd, &exceptset))
