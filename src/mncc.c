@@ -194,12 +194,20 @@ static void mncc_call_leg_connect(struct call_leg *_leg)
 
 static void mncc_call_leg_ring(struct call_leg *_leg)
 {
+	struct gsm_mncc out_mncc = { 0, };
 	struct mncc_call_leg *leg;
 
 	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
 	leg = (struct mncc_call_leg *) _leg;
 
-	mncc_send(leg->conn, MNCC_ALERT_REQ, leg->callref);
+	mncc_fill_header(&out_mncc, MNCC_ALERT_REQ, leg->callref);
+	/* GSM 04.08 10.5.4.21 */
+	out_mncc.fields |= MNCC_F_PROGRESS;
+	out_mncc.progress.coding = 3; /* Standard defined for the GSMßPLMNS */
+	out_mncc.progress.location = 1; /* Private network serving the local user */
+	out_mncc.progress.descr = 8; /* In-band information or appropriate pattern now available */
+
+	mncc_write(leg->conn, &out_mncc, leg->callref);
 }
 
 static void mncc_call_leg_release(struct call_leg *_leg)
