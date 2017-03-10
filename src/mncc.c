@@ -1,5 +1,5 @@
 /*
- * (C) 2016 by Holger Hans Peter Freyther
+ * (C) 2016-2017 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -196,6 +196,7 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 {
 	struct gsm_mncc out_mncc = { 0, };
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
 
 	OSMO_ASSERT(_leg->type == CALL_TYPE_MNCC);
 	leg = (struct mncc_call_leg *) _leg;
@@ -208,6 +209,14 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 	out_mncc.progress.descr = 8; /* In-band information or appropriate pattern now available */
 
 	mncc_write(leg->conn, &out_mncc, leg->callref);
+
+	/*
+	 * If we have remote IP/port let's connect it already.
+	 * FIXME: We would like to keep this as recvonly...
+	 */
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg && other_leg->port != 0 && other_leg->ip != 0)
+		send_rtp_connect(leg, other_leg);
 }
 
 static void mncc_call_leg_release(struct call_leg *_leg)

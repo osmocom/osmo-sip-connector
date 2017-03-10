@@ -1,5 +1,5 @@
 /*
- * (C) 2016 by Holger Hans Peter Freyther
+ * (C) 2016-2017 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -39,12 +39,16 @@ static void sip_ring_call(struct call_leg *_leg);
 static void sip_connect_call(struct call_leg *_leg);
 static void sip_dtmf_call(struct call_leg *_leg, int keypad);
 
-static void call_progress(struct sip_call_leg *leg, const sip_t *sip)
+static void call_progress(struct sip_call_leg *leg, const sip_t *sip, int status)
 {
 	struct call_leg *other = call_leg_other(&leg->base);
 
 	if (!other)
 		return;
+
+	/* Extract SDP for session in progress with matching codec */
+	if (status == 183)
+		sdp_extract_sdp(leg, sip, false);
 
 	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now rining.\n", leg);
 	other->ring_call(other);
@@ -159,7 +163,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 			leg->state = SIP_CC_DLG_CNFD;
 
 		if (status == 180 || status == 183)
-			call_progress(leg, sip);
+			call_progress(leg, sip, status);
 		else if (status == 200)
 			call_connect(leg, sip);
 		else if (status >= 300) {
