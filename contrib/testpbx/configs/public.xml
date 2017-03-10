@@ -59,6 +59,16 @@
     </extension>
 
     -->
+    <extension name="ring-play">
+      <condition field="destination_number" expression="^6666$">
+        <action application="set" data="domain_name=$${domain}"/>
+        <action application="set" data="ringback=%(2000, 4000, 440.0, 480.0)"/>
+        <action application="pre_answer" />
+        <action application="playback" data="tone_stream://%(2000,4000,440,480);loops=-1"/>
+        <action application="sleep" data="180000"/>
+        <action application="respond" data="reponse_info" data="407"/>
+      </condition>
+    </extension>
     <extension name="transfer_to_default">
       <condition>
 	<action application="transfer" data="${destination_number} XML default"/>
