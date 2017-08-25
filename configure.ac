@@ -14,6 +14,10 @@ if test "x$PKG_CONFIG_INSTALLED" = "xno"; then
 fi
 PKG_PROG_PKG_CONFIG([0.20])
 
+dnl include release helper
+RELMAKE='-include osmo-release.mk'
+AC_SUBST([RELMAKE])
+
 dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_PROG_CC
