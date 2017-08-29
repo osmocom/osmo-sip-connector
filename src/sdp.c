@@ -166,18 +166,27 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
 {
 	struct in_addr net = { .s_addr = ntohl(other->ip) };
+	char *fmtp_str = NULL, *sdp;
 
 	leg->wanted_codec = app_media_name(other->payload_msg_type);
-	return talloc_asprintf(leg,
+
+	if (strcmp(leg->wanted_codec, "AMR") == 0)
+		fmtp_str = talloc_asprintf(leg, "a=fmtp:%d octet-align=1\r\n", other->payload_type);
+
+	sdp = talloc_asprintf(leg,
 				"v=0\r\n"
 				"o=Osmocom 0 0 IN IP4 %s\r\n"
 				"s=GSM Call\r\n"
 				"c=IN IP4 %s\r\n"
 				"t=0 0\r\n"
 				"m=audio %d RTP/AVP %d\r\n"
+				"%s"
 				"a=rtpmap:%d %s/8000\r\n",
 				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
 				other->port, other->payload_type,
+				fmtp_str ? fmtp_str : "",
 				other->payload_type,
 				leg->wanted_codec);
+	talloc_free(fmtp_str);
+	return sdp;
 }
