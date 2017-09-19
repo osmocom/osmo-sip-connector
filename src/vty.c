@@ -300,15 +300,18 @@ void mncc_sip_vty_init(void)
 
 	install_element(CONFIG_NODE, &cfg_sip_cmd);
 	install_node(&sip_node, config_write_sip);
+	vty_install_default(SIP_NODE);
 	install_element(SIP_NODE, &cfg_sip_local_addr_cmd);
 	install_element(SIP_NODE, &cfg_sip_remote_addr_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mncc_cmd);
 	install_node(&mncc_node, config_write_mncc);
+	vty_install_default(MNCC_NODE);
 	install_element(MNCC_NODE, &cfg_mncc_path_cmd);
 
 	install_element(CONFIG_NODE, &cfg_app_cmd);
 	install_node(&app_node, config_write_app);
+	vty_install_default(APP_NODE);
 	install_element(APP_NODE, &cfg_use_imsi_cmd);
 	install_element(APP_NODE, &cfg_no_use_imsi_cmd);
 
