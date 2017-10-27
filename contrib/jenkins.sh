@@ -7,8 +7,9 @@ deps="$base/deps"
 inst="$deps/install"
 export deps inst
 
+osmo-clean-workspace.sh
+
 mkdir "$deps" || true
-rm -rf "$inst"
 
 osmo-build-dep.sh libosmocore
 
@@ -32,3 +33,5 @@ $MAKE check \
   || cat-testlogs.sh
 $MAKE distcheck \
   || cat-testlogs.sh
+
+osmo-clean-workspace.sh
