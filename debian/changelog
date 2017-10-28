@@ -1,3 +1,64 @@
+osmo-sip-connector (1.1.0) unstable; urgency=medium
+
+  [ Holger Hans Peter Freyther ]
+  * coverity: Address two issues found by coverity
+  * debian: Add dh-autoreconf required by the debian packaging
+  * app/mncc: Add "use-imsi" to allow calling by IMSI
+  * mncc: Only copy 15 chars to leave the last one as NULL
+  * mncc: Have all release go through a local method
+  * mncc: Reject hold requests for now
+  * mncc: Use snprintf correctly create format specifier
+  * vty: Add simple VTY output for current calls
+  * vty: Fix the number of documented arguments
+  * sip/call/mncc: Move source/dest into the call structure
+  * vty: Add extended show calls command with all information
+  * mncc: Use strcpy for these routines and not memcpy
+  * vty: Add VTY command about the state of the mncc connection
+  * jenkins: Add first CI script for the SIP connector
+  * distcheck/tests: Add the referenced osmoappdesc.py for testing
+  * distcheck: Package the logging.h file as well
+  * jenkins: Try to enable the vty tests as well
+  * jenkins: Use separate check invocation tor un the tests
+  * jenkins: Make it find the libosmocore library as well
+  * sip: Start the application even if sofia-sip is broken
+  * sip: Treat SIP 183 as progress too
+  * evpoll: Use {} in the middle of the if/else if/else block
+  * evpoll: Always initialize revents for the output
+  * evpoll: Don't try to be more smart than g_poll
+  * contrib: Add Dockerfile to build and configure a FreeSWITCH
+  * call: Fix call release handling on mncc connection loss
+  * mncc: Fix use after free on mncc socket disconnection
+  * evpoll: Add workaround for usage of IP_RECVERR in sofia-sip
+  * dtmf: Start handling the DTMF MNCC messages and respond
+  * testpbx: Enable GSM and AMR as codecs to actually be relevant
+  * sip: Actually honor the remote port of the pbx
+  * testpbx: Add another number that will just play a ringback
+  * dtmf: Forward DTMF from MNCC to SIP
+  * mncc: Enable in-band signalling for early media
+  * mncc/sip: Attempt to parse the media from session in progress
+
+  [ Neels Hofmeyr ]
+  * log VTY telnet bind only once
+  * build: be robust against install-sh files above the root dir
+  * configure: check for pkg-config presence
+  * jenkins.sh: use osmo-build-dep.sh, log test failures
+  * jenkins: add value_string termination check
+  * vty: install default commands for SIP,MNCC,APP_NODE
+  * jenkins: use osmo-clean-workspace.sh before and after build
+
+  [ Max ]
+  * Add git review config
+  * Use release helper from libosmocore
+  * Fix build after recent libosmocore update
+
+  [ Keith ]
+  * sdp.c Send octet-align in fmtp
+
+  [ Harald Welte ]
+  * Fix git-version-gen
+
+ -- Harald Welte <laforge@gnumonks.org>  Sat, 28 Oct 2017 18:14:38 +0200
+
 osmo-sip-connector (1) UNRELEASED; urgency=medium
 
   * Initial release.
