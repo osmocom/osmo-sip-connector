@@ -82,6 +82,71 @@ static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
 	osmo_timer_del(&leg->cmd_timeout);
 }
 
+#ifndef _
+#define _(X) case X: return #X
+#endif
+
+static const char *mncc_prim_char(uint32_t msg_type)
+{
+	switch (msg_type) {
+	_(MNCC_SETUP_REQ);
+	_(MNCC_SETUP_IND);
+	_(MNCC_SETUP_RSP);
+	_(MNCC_SETUP_CNF);
+	_(MNCC_SETUP_COMPL_REQ);
+	_(MNCC_SETUP_COMPL_IND);
+	_(MNCC_CALL_CONF_IND);
+	_(MNCC_CALL_PROC_REQ);
+	_(MNCC_PROGRESS_REQ);
+	_(MNCC_ALERT_REQ);
+	_(MNCC_ALERT_IND);
+	_(MNCC_NOTIFY_REQ);
+	_(MNCC_NOTIFY_IND);
+	_(MNCC_DISC_REQ);
+	_(MNCC_DISC_IND);
+	_(MNCC_REL_REQ);
+	_(MNCC_REL_IND);
+	_(MNCC_REL_CNF);
+	_(MNCC_FACILITY_REQ);
+	_(MNCC_FACILITY_IND);
+	_(MNCC_START_DTMF_IND);
+	_(MNCC_START_DTMF_RSP);
+	_(MNCC_START_DTMF_REJ);
+	_(MNCC_STOP_DTMF_IND);
+	_(MNCC_STOP_DTMF_RSP);
+	_(MNCC_MODIFY_REQ);
+	_(MNCC_MODIFY_IND);
+	_(MNCC_MODIFY_RSP);
+	_(MNCC_MODIFY_CNF);
+	_(MNCC_MODIFY_REJ);
+	_(MNCC_HOLD_IND);
+	_(MNCC_HOLD_CNF);
+	_(MNCC_HOLD_REJ);
+	_(MNCC_RETRIEVE_IND);
+	_(MNCC_RETRIEVE_CNF);
+	_(MNCC_RETRIEVE_REJ);
+	_(MNCC_USERINFO_REQ);
+	_(MNCC_USERINFO_IND);
+	_(MNCC_REJ_REQ);
+	_(MNCC_REJ_IND);
+	_(MNCC_BRIDGE);
+	_(MNCC_FRAME_RECV);
+	_(MNCC_FRAME_DROP);
+	_(MNCC_LCHAN_MODIFY);
+	_(MNCC_RTP_CREATE);
+	_(MNCC_RTP_CONNECT);
+	_(MNCC_RTP_FREE);
+	_(GSM_TCHF_FRAME);
+	_(GSM_TCHF_FRAME_EFR);
+	_(GSM_TCHH_FRAME);
+	_(GSM_TCH_FRAME_AMR);
+	_(GSM_BAD_FRAME);
+	_(MNCC_SOCKET_HELLO);
+	default:
+		return "Unknown MNCC prim";
+	}
+}
+
 static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 {
 	struct call *call;
@@ -126,6 +191,8 @@ static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc, uint
 static void mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
 {
 	struct gsm_mncc mncc = { 0, };
+
+	LOGP(DMNCC, LOGL_DEBUG, "Send MNCC prim %s (0x%x)\n", mncc_prim_char(msg_type), msg_type);
 
 	mncc_fill_header(&mncc, msg_type, callref);
 	mncc_write(conn, &mncc, callref);
@@ -806,6 +873,8 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 	}
 
 	memcpy(&msg_type, buf, 4);
+
+	LOGP(DMNCC, LOGL_DEBUG, "Recv MNCC prim %s (0x%x)\n", mncc_prim_char(msg_type), msg_type);
 	switch (msg_type) {
 	case MNCC_SOCKET_HELLO:
 		check_hello(conn, buf, rc);
