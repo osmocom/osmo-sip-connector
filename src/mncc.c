@@ -485,6 +485,14 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	}
 
 	/* TODO.. bearer caps and better audio handling */
+	if ((data->fieds & MNCC_F_BEARER_CAP) == 0) {
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC leg(%u) without bearrer cap fields(%u)\n",
+			data->callref, data->fields);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
+	/* parse bearer -> move to function */
+	
 	if (!continue_setup(conn, data)) {
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC screening parameters failed leg(%u)\n", data->callref);
