@@ -129,6 +129,9 @@ struct mncc_call_leg {
 	struct osmo_timer_list cmd_timeout;
 	int rsp_wanted;
 
+	int bearer_cap_valid;
+	struct gsm_mncc_bearer_cap bearer_cap;
+
 	struct mncc_connection *conn;
 };
 

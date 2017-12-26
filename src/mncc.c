@@ -339,12 +339,26 @@ static void close_connection(struct mncc_connection *conn)
 		conn->on_disconnect(conn);
 }
 
+static void send_mncc_call_proc_req(struct mncc_call_leg *leg)
+{
+	struct gsm_mncc out_mncc = { 0, };
+
+	mncc_fill_header(&out_mncc, MNCC_CALL_PROC_REQ, leg->callref);
+	if (leg->bearer_cap_valid) {
+		out_mncc.fields |= MNCC_F_BEARER_CAP;
+		out_mncc.bearer_cap = leg->bearer_cap;
+	} else
+		LOGP(DMNCC, LOGL_ERROR, "Sending call (ref(%u) state(%d)) proceed without bearer caps!\n",
+			leg->callref, leg->state);
+	mncc_write(leg->conn, &out_mncc, leg->callref);
+}
+
 static void continue_mo_call(struct mncc_call_leg *leg)
 {
 	char *dest, *source;
 
 	/* TODO.. continue call obviously only for MO call right now */
-	mncc_send(leg->conn, MNCC_CALL_PROC_REQ, leg->callref);
+	send_mncc_call_proc_req(leg);
 	leg->state = MNCC_CC_PROCEEDING;
 
 	if (leg->called.type == GSM340_TYPE_INTERNATIONAL)
@@ -456,6 +470,22 @@ static int continue_setup(struct mncc_connection *conn, struct gsm_mncc *mncc)
 	return 1;
 }
 
+static int check_codec_overlap(struct gsm_mncc_bearer_cap *cap) {
+	/* TODO: validate that the available codecs matches with our allowed codecs */
+	return 1;
+}
+
+static int select_codec(struct gsm_mncc_bearer_cap *ms_caps,
+		struct gsm_mncc_bearer_cap *output_caps)
+{
+	memcpy(output_caps, ms_caps, sizeof(struct gsm_mncc_bearer_cap));
+	/* FR version 1 */
+	output_caps->speech_ver[0] = 0;
+	output_caps->speech_ver[1] = -1;
+
+	return 0;
+}
+
 static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc *data;
@@ -484,14 +514,17 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
 
-	/* TODO.. bearer caps and better audio handling */
-	if ((data->fieds & MNCC_F_BEARER_CAP) == 0) {
+	if ((data->fields & MNCC_F_BEARER_CAP) == 0) {
 		LOGP(DMNCC, LOGL_ERROR,
-			"MNCC leg(%u) without bearrer cap fields(%u)\n",
-			data->callref, data->fields);
+			"MNCC leg(%u) without bearrer cap\n", data->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
-	/* parse bearer -> move to function */
+	if (!check_codec_overlap(&data->bearer_cap)) {
+		/* TODO: more detailed codec view */
+		LOGP(DMNCC, LOGL_ERROR,
+			"MNCC leg(%u) has wrong codecs\n", data->callref);
+		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+	}
 	
 	if (!continue_setup(conn, data)) {
 		LOGP(DMNCC, LOGL_ERROR,
@@ -515,6 +548,9 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
 	leg->dir = MNCC_DIR_MO;
+	/* bcaps are ensured to be present */
+	select_codec(&data->bearer_cap, &leg->bearer_cap);
+	leg->bearer_cap_valid = 1;
 	memcpy(&leg->called, &data->called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
