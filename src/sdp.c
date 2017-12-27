@@ -179,13 +179,13 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
 				"s=GSM Call\r\n"
 				"c=IN IP4 %s\r\n"
 				"t=0 0\r\n"
-				"m=audio %d RTP/AVP %d\r\n"
+				"m=audio %d RTP/AVP 3\r\n"
 				"%s"
-				"a=rtpmap:%d %s/8000\r\n",
+				"a=rtpmap:3 %s/8000\r\n",
 				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
-				other->port, other->payload_type,
+				other->port, // other->payload_type,
 				fmtp_str ? fmtp_str : "",
-				other->payload_type,
+				//other->payload_type,
 				leg->wanted_codec);
 	talloc_free(fmtp_str);
 	return sdp;
