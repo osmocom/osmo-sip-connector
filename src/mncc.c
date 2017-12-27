@@ -413,6 +413,7 @@ static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
 	}
 
+	LOGP(DMNCC, LOGL_INFO, "Recv RTP ip 0x%08x port %d payload 0x%x\n", rtp->ip, rtp->port, rtp->payload_type);
 	/* extract information about where the RTP is */
 	if (rtp->ip != 0 || rtp->port != 0 || rtp->payload_type != 0)
 		return;
