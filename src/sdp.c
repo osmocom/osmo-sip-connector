@@ -165,7 +165,7 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 
 char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
 {
-	struct in_addr net = { .s_addr = htonl(other->ip) };
+	struct in_addr net = { .s_addr = other->ip };
 	char *fmtp_str = NULL, *sdp;
 
 	leg->wanted_codec = app_media_name(other->payload_msg_type);
