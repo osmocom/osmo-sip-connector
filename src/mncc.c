@@ -430,6 +430,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc_rtp *rtp;
 	struct mncc_call_leg *leg;
+	struct in_addr net = { 0 };
 
 	if (rc < sizeof(*rtp)) {
 		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %zu\n",
@@ -449,11 +450,12 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	leg->base.port = rtp->port;
 	leg->base.payload_type = rtp->payload_type;
 	leg->base.payload_msg_type = rtp->payload_msg_type;
+	net.s_addr = ntohl(rtp->ip);
 
 	/* TODO.. now we can continue with the call */
 	LOGP(DMNCC, LOGL_DEBUG,
-		"RTP cnt leg(%u) ip(%u), port(%u) pt(%u) ptm(%u)\n",
-		leg->callref, leg->base.ip, leg->base.port,
+		"RTP cnt leg(%u) ip(%u/%s), port(%u) pt(%u) ptm(%u)\n",
+		leg->callref, leg->base.ip, inet_ntoa(net), leg->base.port,
 		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	continue_call(leg);
