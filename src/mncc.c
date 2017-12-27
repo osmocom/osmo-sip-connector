@@ -224,7 +224,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	 */
 	mncc.msg_type = MNCC_RTP_CONNECT;
 	mncc.callref = leg->callref;
-	mncc.ip = htonl(other->ip);
+	mncc.ip = other->ip;
 	mncc.port = other->port;
 	mncc.payload_type = other->payload_type;
 	/*
