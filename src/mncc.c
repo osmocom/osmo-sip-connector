@@ -439,7 +439,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	rtp = (struct gsm_mncc_rtp *) buf;
 	leg = mncc_find_leg(rtp->callref);
 	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", rtp->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
 	}
 
@@ -578,7 +578,7 @@ static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
 	*mncc = (struct gsm_mncc *) buf;
 	leg = mncc_find_leg((*mncc)->callref);
 	if (!leg) {
-		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", (*mncc)->callref);
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", (*mncc)->callref);
 		return NULL;
 	}
 
