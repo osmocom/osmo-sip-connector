@@ -314,6 +314,10 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
 	struct call_leg *other = leg->base.call->initial;
+	struct mncc_call_leg *other_mncc = NULL;
+
+	OSMO_ASSERT(other->type == CALL_TYPE_MNCC);
+	other_mncc = (struct mncc_call_leg *) other;
 
 	char *from = talloc_asprintf(leg, "sip:%s@%s:%d",
 				calling_num,
@@ -323,6 +327,8 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				called_num,
 				agent->app->sip.remote_addr,
 				agent->app->sip.remote_port);
+	char *imsi = talloc_asprintf(leg, "X-IMSI: %.16s",
+				other_mncc->imsi);
 	char *sdp = sdp_create_file(leg, other);
 
 	leg->state = SIP_CC_INITIAL;
@@ -330,6 +336,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	nua_invite(leg->nua_handle,
 			SIPTAG_FROM_STR(from),
 			SIPTAG_TO_STR(to),
+			SIPTAG_HEADER_STR(imsi),
 			NUTAG_MEDIA_ENABLE(0),
 			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
 			SIPTAG_PAYLOAD_STR(sdp),
@@ -338,6 +345,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	leg->base.call->remote = &leg->base;
 	talloc_free(from);
 	talloc_free(to);
+	talloc_free(imsi);
 	talloc_free(sdp);
 	return 0;
 }
