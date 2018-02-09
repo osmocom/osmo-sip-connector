@@ -4,9 +4,9 @@ Priority: optional
 Maintainer: Holger Hans Peter Freyther <holger@moiji-mobile.com>
 Build-Depends: debhelper (>= 7.0.0~), autotools-dev, pkg-config, libosmocore-dev, libsofia-sip-ua-glib-dev, libsofia-sip-ua-dev, dh-systemd (>= 1.5), dh-autoreconf
 Standards-Version: 3.8.4
-Homepage: http://openbsc.osmocom.org/
-Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
-Vcs-Browser: http://openbsc.osmocom.org/trac/browser
+Homepage: https://osmocom.org/projects/osmo-sip-conector/wiki
+Vcs-Git: git://git.osmocom.org/osmo-sip-connector.git
+Vcs-Browser: http://git.osmocom.org/osmo-sip-connector
 
 Package: osmo-sip-connector
 Architecture: any
