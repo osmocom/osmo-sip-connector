@@ -11,7 +11,7 @@ osmo-clean-workspace.sh
 
 mkdir "$deps" || true
 
-osmo-build-dep.sh libosmocore
+osmo-build-dep.sh libosmocore  "" --disable-doxygen
 
 verify_value_string_arrays_are_terminated.py $(find . -name "*.[hc]")
 
