@@ -82,6 +82,7 @@ static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
 	osmo_timer_del(&leg->cmd_timeout);
 }
 
+/* Find a MNCC Call leg (whether MO or MT) by given callref */
 static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 {
 	struct call *call;
@@ -146,6 +147,7 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 	}
 }
 
+/* Send a MNCC_RTP_CONNET to the MSC for the given call legs */
 static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
@@ -174,6 +176,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	return true;
 }
 
+/* CONNECT call-back for MNCC call leg */
 static void mncc_call_leg_connect(struct call_leg *_leg)
 {
 	struct mncc_call_leg *leg;
@@ -192,6 +195,7 @@ static void mncc_call_leg_connect(struct call_leg *_leg)
 	mncc_send(leg->conn, MNCC_SETUP_RSP, leg->callref);
 }
 
+/* RING call-back for MNCC call leg */
 static void mncc_call_leg_ring(struct call_leg *_leg)
 {
 	struct gsm_mncc out_mncc = { 0, };
@@ -219,6 +223,7 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 		send_rtp_connect(leg, other_leg);
 }
 
+/* RELEASE call-back for MNCC call leg */
 static void mncc_call_leg_release(struct call_leg *_leg)
 {
 	struct mncc_call_leg *leg;
@@ -262,6 +267,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	}
 }
 
+/* Close the MNCC connection/socket */
 static void close_connection(struct mncc_connection *conn)
 {
 	osmo_fd_unregister(&conn->fd);
@@ -389,6 +395,7 @@ static int continue_setup(struct mncc_connection *conn, struct gsm_mncc *mncc)
 	return 1;
 }
 
+/* Check + Process MNCC_SETUP_IND (MO call) */
 static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 {
 	struct gsm_mncc *data;
@@ -452,6 +459,12 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
+/*! Find MNCC Call leg by given MNCC message
+ *  \param conn MNCC socket/connection
+ *  \param[in] buf buffer containing MNCC message
+ *  \param[in] rc length of message in \a buf
+ *  \param[out] mncc return pointer to MNCC message
+ *  \returns call leg (if found) or NULL */
 static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
 					char *buf, int rc, struct gsm_mncc **mncc)
 {
@@ -787,6 +800,7 @@ static void mncc_reconnect(void *data)
 	conn->state = MNCC_WAIT_VERSION;
 }
 
+/* osmo-fd read call-back for MNCC socket: read MNCC message + dispatch it */
 static int mncc_data(struct osmo_fd *fd, unsigned int what)
 {
 	char buf[4096];
