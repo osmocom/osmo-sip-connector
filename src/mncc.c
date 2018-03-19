@@ -319,9 +319,9 @@ static void continue_call(struct mncc_call_leg *leg)
 	return continue_mt_call(leg);
 }
 
-static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
+static void check_rtp_connect(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc_rtp *rtp;
+	const struct gsm_mncc_rtp *rtp;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -331,7 +331,7 @@ static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
 		return close_connection(conn);
 	}
 
-	rtp = (struct gsm_mncc_rtp *) buf;
+	rtp = (const struct gsm_mncc_rtp *) buf;
 	leg = mncc_find_leg(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", rtp->callref);
@@ -350,9 +350,9 @@ static void check_rtp_connect(struct mncc_connection *conn, char *buf, int rc)
 	leg->base.release_call(&leg->base);
 }
 
-static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
+static void check_rtp_create(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc_rtp *rtp;
+	const struct gsm_mncc_rtp *rtp;
 	struct mncc_call_leg *leg;
 
 	if (rc < sizeof(*rtp)) {
@@ -361,7 +361,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 		return close_connection(conn);
 	}
 
-	rtp = (struct gsm_mncc_rtp *) buf;
+	rtp = (const struct gsm_mncc_rtp *) buf;
 	leg = mncc_find_leg(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
@@ -383,7 +383,7 @@ static void check_rtp_create(struct mncc_connection *conn, char *buf, int rc)
 	continue_call(leg);
 }
 
-static int continue_setup(struct mncc_connection *conn, struct gsm_mncc *mncc)
+static int continue_setup(struct mncc_connection *conn, const struct gsm_mncc *mncc)
 {
 	if (mncc->called.plan != GSM340_PLAN_ISDN) {
 		LOGP(DMNCC, LOGL_ERROR,
@@ -396,9 +396,9 @@ static int continue_setup(struct mncc_connection *conn, struct gsm_mncc *mncc)
 }
 
 /* Check + Process MNCC_SETUP_IND (MO call) */
-static void check_setup(struct mncc_connection *conn, char *buf, int rc)
+static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct call *call;
 	struct mncc_call_leg *leg;
 
@@ -408,7 +408,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
 		return close_connection(conn);
 	}
 
-	data = (struct gsm_mncc *) buf;
+	data = (const struct gsm_mncc *) buf;
 
 	/* screen arguments */
 	if ((data->fields & MNCC_F_CALLED) == 0) {
@@ -466,7 +466,7 @@ static void check_setup(struct mncc_connection *conn, char *buf, int rc)
  *  \param[out] mncc return pointer to MNCC message
  *  \returns call leg (if found) or NULL */
 static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
-					char *buf, int rc, struct gsm_mncc **mncc)
+					const char *buf, int rc, const struct gsm_mncc **mncc)
 {
 	struct mncc_call_leg *leg;
 
@@ -477,7 +477,7 @@ static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
 		return NULL;
 	}
 
-	*mncc = (struct gsm_mncc *) buf;
+	*mncc = (const struct gsm_mncc *) buf;
 	leg = mncc_find_leg((*mncc)->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", (*mncc)->callref);
@@ -487,9 +487,9 @@ static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
 	return leg;
 }
 
-static void check_disc_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_disc_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -508,9 +508,9 @@ static void check_disc_ind(struct mncc_connection *conn, char *buf, int rc)
 		other_leg->release_call(other_leg);
 }
 
-static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_rel_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -529,9 +529,9 @@ static void check_rel_ind(struct mncc_connection *conn, char *buf, int rc)
 	mncc_leg_release(leg);
 }
 
-static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
+static void check_rel_cnf(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -543,9 +543,9 @@ static void check_rel_cnf(struct mncc_connection *conn, char *buf, int rc)
 	mncc_leg_release(leg);
 }
 
-static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_stp_cmpl_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -557,9 +557,9 @@ static void check_stp_cmpl_ind(struct mncc_connection *conn, char *buf, int rc)
 	leg->state = MNCC_CC_CONNECTED;
 }
 
-static void check_rej_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_rej_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -574,9 +574,9 @@ static void check_rej_ind(struct mncc_connection *conn, char *buf, int rc)
 	mncc_leg_release(leg);
 }
 
-static void check_cnf_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_cnf_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -591,9 +591,9 @@ static void check_cnf_ind(struct mncc_connection *conn, char *buf, int rc)
 	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
 }
 
-static void check_alrt_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_alrt_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -615,9 +615,9 @@ static void check_alrt_ind(struct mncc_connection *conn, char *buf, int rc)
 	other_leg->ring_call(other_leg);
 }
 
-static void check_hold_ind(struct mncc_connection *conn, char *buf, int rc)
+static void check_hold_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -629,9 +629,9 @@ static void check_hold_ind(struct mncc_connection *conn, char *buf, int rc)
 	mncc_send(leg->conn, MNCC_HOLD_REJ, leg->callref);
 }
 
-static void check_stp_cnf(struct mncc_connection *conn, char *buf, int rc)
+static void check_stp_cnf(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -657,10 +657,10 @@ static void check_stp_cnf(struct mncc_connection *conn, char *buf, int rc)
 	other_leg->connect_call(other_leg);
 }
 
-static void check_dtmf_start(struct mncc_connection *conn, char *buf, int rc)
+static void check_dtmf_start(struct mncc_connection *conn, const char *buf, int rc)
 {
 	struct gsm_mncc out_mncc = { 0, };
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 	struct call_leg *other_leg;
 
@@ -680,10 +680,10 @@ static void check_dtmf_start(struct mncc_connection *conn, char *buf, int rc)
 	mncc_write(conn, &out_mncc, leg->callref);
 }
 
-static void check_dtmf_stop(struct mncc_connection *conn, char *buf, int rc)
+static void check_dtmf_stop(struct mncc_connection *conn, const char *buf, int rc)
 {
 	struct gsm_mncc out_mncc = { 0, };
-	struct gsm_mncc *data;
+	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
 
 	leg = find_leg(conn, buf, rc, &data);
@@ -698,9 +698,9 @@ static void check_dtmf_stop(struct mncc_connection *conn, char *buf, int rc)
 	mncc_write(conn, &out_mncc, leg->callref);
 }
 
-static void check_hello(struct mncc_connection *conn, char *buf, int rc)
+static void check_hello(struct mncc_connection *conn, const char *buf, int rc)
 {
-	struct gsm_mncc_hello *hello;
+	const struct gsm_mncc_hello *hello;
 
 	if (rc != sizeof(*hello)) {
 		LOGP(DMNCC, LOGL_ERROR, "Hello shorter than expected %d vs. %zu\n",
@@ -708,7 +708,7 @@ static void check_hello(struct mncc_connection *conn, char *buf, int rc)
 		return close_connection(conn);
 	}
 
-	hello = (struct gsm_mncc_hello *) buf;
+	hello = (const struct gsm_mncc_hello *) buf;
 	LOGP(DMNCC, LOGL_NOTICE, "Got hello message version %d\n", hello->version);
 
 	if (hello->version != MNCC_SOCK_VERSION) {
