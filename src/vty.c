@@ -51,7 +51,7 @@ static struct cmd_node app_node = {
 };
 
 static struct vty_app_info vty_info = {
-	.name		= "OsmoMNCC",
+	.name		= "OsmoSIPcon",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= mncc_vty_go_parent,
 	.is_config_node	= mncc_vty_is_config_node,

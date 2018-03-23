@@ -78,7 +78,7 @@ static const struct log_info mncc_sip_info = {
 
 static void print_help(void)
 {
-	printf("Osmo MNCC to SIP bridge\n");
+	printf("OsmoSIPcon: MNCC to SIP bridge\n");
 	printf("  -h --hekp\tthis text\n");
 	printf("  -c --config-file NAME\tThe config file to use [%s]\n", config_file);
 }
