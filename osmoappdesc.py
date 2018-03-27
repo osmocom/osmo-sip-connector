@@ -21,7 +21,7 @@ app_configs = {
 }
 
 apps = [
-    (4256, "src/osmo-sip-connector", "OsmoMNCC", "osmo-sip-connector")
+    (4256, "src/osmo-sip-connector", "OsmoSIPcon", "osmo-sip-connector")
 ]
 
 vty_command = ["./src/osmo-sip-connector", "-c",
