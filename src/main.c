@@ -117,7 +117,7 @@ int main(int argc, char **argv)
 	/* initialize osmocom */
 	tall_mncc_ctx = talloc_named_const(NULL, 0, "MNCC CTX");
 	osmo_init_ignore_signals();
-	osmo_init_logging(&mncc_sip_info);
+	osmo_init_logging2(tall_mncc_ctx, &mncc_sip_info);
 	osmo_stats_init(tall_mncc_ctx);
 
 	mncc_sip_vty_init();
