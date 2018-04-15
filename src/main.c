@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 
 
 	/* parsing and setup */
-
+	g_app.sip.sofia_log_level = 2;
 	handle_options(argc, argv);
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {

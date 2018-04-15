@@ -27,6 +27,7 @@
 #include <osmocom/core/utils.h>
 
 #include <sofia-sip/sip_status.h>
+#include <sofia-sip/su_log.h>
 
 #include <talloc.h>
 
@@ -383,12 +384,24 @@ char *make_sip_uri(struct sip_agent *agent)
 				agent->app->sip.local_port);
 }
 
+/* http://sofia-sip.sourceforge.net/refdocs/debug_logs.html */
+static void sip_logger(void *stream, char const *fmt, va_list ap)
+{
+	/* this is ugly, as unfortunately sofia-sip does not pass the log level to
+	 * the log handler call-back function, so we have no clue what log level the
+	 * currently logged message was sent for :(  As a result, we can only use one
+	 * hard-coded LOGL_NOTICE here */
+	osmo_vlogp(DSIP, LOGL_NOTICE, "", 0, 0, fmt, ap);
+}
+
 void sip_agent_init(struct sip_agent *agent, struct app_config *app)
 {
 	agent->app = app;
 
 	su_init();
 	su_home_init(&agent->home);
+	su_log_redirect(su_log_default, &sip_logger, NULL);
+	su_log_redirect(su_log_global, &sip_logger, NULL);
 	agent->root = su_glib_root_create(NULL);
 	su_root_threading(agent->root, 0);
 }

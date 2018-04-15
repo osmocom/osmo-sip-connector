@@ -9,6 +9,7 @@ struct app_config {
 	struct {
 		const char *local_addr;
 		int local_port;
+		int sofia_log_level;
 
 		const char *remote_addr;
 		int remote_port;

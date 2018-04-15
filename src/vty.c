@@ -1,5 +1,6 @@
 /*
  * (C) 2016 by Holger Hans Peter Freyther
+ * (C) 2018 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -24,6 +25,8 @@
 #include "mncc.h"
 
 #include <talloc.h>
+
+#include <sofia-sip/su_log.h>
 
 extern void *tall_mncc_ctx;
 
@@ -88,6 +91,7 @@ static int config_write_sip(struct vty *vty)
 	vty_out(vty, "sip%s", VTY_NEWLINE);
 	vty_out(vty, " local %s %d%s", g_app.sip.local_addr, g_app.sip.local_port, VTY_NEWLINE);
 	vty_out(vty, " remote %s %d%s", g_app.sip.remote_addr, g_app.sip.remote_port, VTY_NEWLINE);
+	vty_out(vty, " sofia-sip log-level %d%s", g_app.sip.sofia_log_level, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -130,6 +134,19 @@ DEFUN(cfg_sip_remote_addr, cfg_sip_remote_addr_cmd,
 	talloc_free((char *) g_app.sip.remote_addr);
 	g_app.sip.remote_addr = talloc_strdup(tall_mncc_ctx, argv[0]);
 	g_app.sip.remote_port = atoi(argv[1]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_sip_sofia_log_level, cfg_sip_sofia_log_level_cmd,
+	"sofia-sip log-level <0-9>",
+	"sofia-sip library configuration\n"
+	"global log-level for sofia-sip\n"
+	"(0 = nothing, 9 = super-verbose)\n")
+{
+	g_app.sip.sofia_log_level = atoi(argv[0]);
+	su_log_set_level(su_log_default, g_app.sip.sofia_log_level);
+	su_log_set_level(su_log_global, g_app.sip.sofia_log_level);
+
 	return CMD_SUCCESS;
 }
 
@@ -302,6 +319,7 @@ void mncc_sip_vty_init(void)
 	install_node(&sip_node, config_write_sip);
 	install_element(SIP_NODE, &cfg_sip_local_addr_cmd);
 	install_element(SIP_NODE, &cfg_sip_remote_addr_cmd);
+	install_element(SIP_NODE, &cfg_sip_sofia_log_level_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mncc_cmd);
 	install_node(&mncc_node, config_write_mncc);
