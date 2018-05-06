@@ -1,3 +1,24 @@
+osmo-sip-connector (1.1.1) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * vty: skip installing cmds now always installed by default
+
+  [ Harald Welte ]
+  * mncc.c: Ensure proper string buffer NUL termination
+  * debian/control: Fix URLs for homepage / git
+  * comments
+  * mncc: use 'const' to denote read-only input buffer/message
+  * Call the program "OsmoSIPcon" (also in vty)
+  * osmoappdesc: Fix VTY prompt to use OsmoSIPcon, not old OsmoMNCC
+  * sip: Register log callback function with sofia-sip
+  * use osmo_init_logging2() to avoid allocating from NULL context
+
+  [ Pau Espin Pedrol ]
+  * contrib: Add systemd service file
+  * contrib: jenkins.sh: Disable doxygen in libosmocore build
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Sun, 06 May 2018 17:45:55 +0200
+
 osmo-sip-connector (1.1.0) unstable; urgency=medium
 
   [ Holger Hans Peter Freyther ]
