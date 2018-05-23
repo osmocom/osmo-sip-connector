@@ -820,6 +820,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 	}
 
 	memcpy(&msg_type, buf, 4);
+
+	LOGP(DMNCC, LOGL_DEBUG, "MNCC rcvd message type: %s\n", osmo_mncc_name(msg_type));
+
 	switch (msg_type) {
 	case MNCC_SOCKET_HELLO:
 		check_hello(conn, buf, rc);
