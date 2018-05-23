@@ -107,6 +107,11 @@ static void mncc_fill_header(struct gsm_mncc *mncc, uint32_t msg_type, uint32_t 
 {
 	mncc->msg_type = msg_type;
 	mncc->callref = callref;
+	if (MNCC_DISC_REQ == msg_type || MNCC_REL_REQ == msg_type) {
+		mncc->fields |= MNCC_F_CAUSE;
+		mncc->cause.coding = GSM48_CAUSE_CODING_GSM;
+		mncc->cause.location = GSM48_CAUSE_LOC_PUN_S_LU;
+	}
 }
 
 static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc, uint32_t callref)
@@ -208,9 +213,9 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 	mncc_fill_header(&out_mncc, MNCC_ALERT_REQ, leg->callref);
 	/* GSM 04.08 10.5.4.21 */
 	out_mncc.fields |= MNCC_F_PROGRESS;
-	out_mncc.progress.coding = 3; /* Standard defined for the GSMßPLMNS */
-	out_mncc.progress.location = 1; /* Private network serving the local user */
-	out_mncc.progress.descr = 8; /* In-band information or appropriate pattern now available */
+	out_mncc.progress.coding = GSM48_CAUSE_CODING_GSM; /* Standard defined for the GSMßPLMNS */
+	out_mncc.progress.location = GSM48_CAUSE_LOC_PRN_S_LU; /* Private network serving the local user */
+	out_mncc.progress.descr = GSM48_PROGR_IN_BAND_AVAIL; /* In-band information or appropriate pattern now available */
 
 	mncc_write(leg->conn, &out_mncc, leg->callref);
 
@@ -749,16 +754,16 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 	mncc.callref = leg->callref;
 
 	mncc.fields |= MNCC_F_CALLING;
-	mncc.calling.plan = 1;
-	mncc.calling.type = 0x0;
+	mncc.calling.plan = GSM48_NPI_ISDN_E164;
+	mncc.calling.type = GSM48_TON_UNKNOWN;
 	osmo_strlcpy(mncc.calling.number, call->source, sizeof(mncc.calling.number));
 
 	if (conn->app->use_imsi_as_id) {
 		snprintf(mncc.imsi, 15, "%s", call->dest);
 	} else {
 		mncc.fields |= MNCC_F_CALLED;
-		mncc.called.plan = 1;
-		mncc.called.type = 0x0;
+		mncc.called.plan = GSM48_NPI_ISDN_E164;
+		mncc.called.type = GSM48_TON_UNKNOWN;
 		osmo_strlcpy(mncc.called.number, call->dest, sizeof(mncc.called.number));
 	}
 
