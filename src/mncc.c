@@ -380,9 +380,10 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	leg->base.payload_msg_type = rtp->payload_msg_type;
 
 	/* TODO.. now we can continue with the call */
+	struct in_addr net = { .s_addr = htonl(leg->base.ip) };
 	LOGP(DMNCC, LOGL_DEBUG,
-		"RTP cnt leg(%u) ip(%u), port(%u) pt(%u) ptm(%u)\n",
-		leg->callref, leg->base.ip, leg->base.port,
+		"RTP cnt leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
+		leg->callref, inet_ntoa(net), leg->base.port,
 		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	continue_call(leg);
