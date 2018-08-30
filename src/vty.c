@@ -306,7 +306,7 @@ DEFUN(show_mncc_conn, show_mncc_conn_cmd,
 void mncc_sip_vty_init(void)
 {
 	/* default values */
-	g_app.mncc.path = talloc_strdup(tall_mncc_ctx, "/tmp/bsc_mncc");
+	g_app.mncc.path = talloc_strdup(tall_mncc_ctx, "/tmp/msc_mncc");
 	g_app.sip.local_addr = talloc_strdup(tall_mncc_ctx, "127.0.0.1");
 	g_app.sip.local_port = 5060;
 	g_app.sip.remote_addr = talloc_strdup(tall_mncc_ctx, "pbx");
