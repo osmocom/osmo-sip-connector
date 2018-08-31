@@ -264,7 +264,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	case MNCC_CC_PROCEEDING:
 	case MNCC_CC_CONNECTED:
 		LOGP(DMNCC, LOGL_DEBUG,
-			"Releasing call in non-initial leg(%u)\n", leg->callref);
+			"Releasing call in non-initial leg(%u) cause(%d)\n", leg->callref, leg->base.cause);
 		leg->base.in_release = true;
 		start_cmd_timer(leg, MNCC_REL_IND);
 		mncc_send(leg->conn, MNCC_DISC_REQ, leg->callref);
@@ -508,6 +508,8 @@ static void check_disc_ind(struct mncc_connection *conn, const char *buf, int rc
 		return;
 
 	LOGP(DMNCC,
+		LOGL_DEBUG, "Rcvd MNCC_DISC_IND, Cause: %d\n", data->cause.value);
+	LOGP(DMNCC,
 		LOGL_DEBUG, "leg(%u) was disconnected. Releasing\n", data->callref);
 	leg->base.in_release = true;
 	start_cmd_timer(leg, MNCC_REL_CNF);
@@ -528,6 +530,8 @@ static void check_rel_ind(struct mncc_connection *conn, const char *buf, int rc)
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
+
+	LOGP(DMNCC, LOGL_DEBUG, "Rcvd MNCC_REL_IND, Cause: %d\n", data->cause.value);
 
 	if (leg->base.in_release)
 		stop_cmd_timer(leg, MNCC_REL_IND);
@@ -587,7 +591,7 @@ static void check_rej_ind(struct mncc_connection *conn, const char *buf, int rc)
 		other_leg->cause = data->cause.value;
 		other_leg->release_call(other_leg);
 	}
-	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected.\n", data->callref);
+	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected with cause(%d).\n", data->callref, leg->cause);
 	mncc_leg_release(leg);
 }
 

@@ -239,12 +239,13 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		else if (status >= 300) {
 			struct call_leg *other = call_leg_other(&leg->base);
 
-			LOGP(DSIP, LOGL_ERROR, "leg(%p) unknown err, releasing.\n", leg);
+			LOGP(DSIP, LOGL_ERROR, "leg(%p) unknown SIP status(%d), releasing.\n", leg, status);
 			nua_cancel(leg->nua_handle, TAG_END());
 			nua_handle_destroy(leg->nua_handle);
 			call_leg_release(&leg->base);
 
 			if (other) {
+				LOGP(DSIP, LOGL_DEBUG, "Releasing other leg (%p) with status(%d)\n", other, status);
 				other->cause = status2cause(status);
 				other->release_call(other);
 			}
@@ -326,6 +327,7 @@ static void sip_release_call(struct call_leg *_leg)
 	 * to help us here.
 	 */
 
+	LOGP(DSIP, LOGL_DEBUG, "%s(): Release with MNCC cause(%d)\n", __func__, _leg->cause);
 	cause2status(_leg->cause, &sip_cause, &sip_phrase, &reason_text);
 	snprintf(reason, sizeof reason, "Q.850;cause=%u;text=\"%s\"", _leg->cause, reason_text);
 
