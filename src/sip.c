@@ -51,7 +51,7 @@ static void call_progress(struct sip_call_leg *leg, const sip_t *sip, int status
 	if (status == 183)
 		sdp_extract_sdp(leg, sip, false);
 
-	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now rining.\n", leg);
+	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now ringing.\n", leg);
 	other->ring_call(other);
 }
 
