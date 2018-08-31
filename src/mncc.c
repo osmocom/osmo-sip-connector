@@ -105,12 +105,16 @@ static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 
 static void mncc_fill_header(struct gsm_mncc *mncc, uint32_t msg_type, uint32_t callref)
 {
+	struct mncc_call_leg *mncc_leg;
+
 	mncc->msg_type = msg_type;
 	mncc->callref = callref;
 	if (MNCC_DISC_REQ == msg_type || MNCC_REL_REQ == msg_type) {
+		mncc_leg = mncc_find_leg(callref);
 		mncc->fields |= MNCC_F_CAUSE;
 		mncc->cause.coding = GSM48_CAUSE_CODING_GSM;
 		mncc->cause.location = GSM48_CAUSE_LOC_PUN_S_LU;
+		mncc->cause.value = mncc_leg->base.cause;
 	}
 }
 
@@ -511,6 +515,7 @@ static void check_disc_ind(struct mncc_connection *conn, const char *buf, int rc
 
 	other_leg = call_leg_other(&leg->base);
 	if (other_leg)
+		other_leg->cause = data->cause.value;
 		other_leg->release_call(other_leg);
 }
 
@@ -529,6 +534,7 @@ static void check_rel_ind(struct mncc_connection *conn, const char *buf, int rc)
 		struct call_leg *other_leg;
 		other_leg = call_leg_other(&leg->base);
 		if (other_leg)
+			other_leg->cause = data->cause.value;
 			other_leg->release_call(other_leg);
 	}
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n", data->callref);
@@ -573,8 +579,10 @@ static void check_rej_ind(struct mncc_connection *conn, const char *buf, int rc)
 	if (!leg)
 		return;
 
+	leg->cause = data->cause.value;
 	other_leg = call_leg_other(&leg->base);
 	if (other_leg)
+		other_leg->cause = data->cause.value;
 		other_leg->release_call(other_leg);
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected.\n", data->callref);
 	mncc_leg_release(leg);

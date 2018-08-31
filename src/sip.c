@@ -244,8 +244,10 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 			nua_handle_destroy(leg->nua_handle);
 			call_leg_release(&leg->base);
 
-			if (other)
+			if (other) {
+				other->cause = status2cause(status);
 				other->release_call(other);
+			}
 		}
 	} else if (event == nua_r_bye || event == nua_r_cancel) {
 		/* our bye or hang up is answered */
@@ -309,6 +311,10 @@ static void cause2status(int cause, int *sip_status, const char **sip_phrase, co
 static void sip_release_call(struct call_leg *_leg)
 {
 	struct sip_call_leg *leg;
+	char reason[64];
+	int sip_cause;
+	const char *sip_phrase;
+	const char *reason_text;
 
 	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
 	leg = (struct sip_call_leg *) _leg;
@@ -319,6 +325,10 @@ static void sip_release_call(struct call_leg *_leg)
 	 * and for a connected one bye. I don't see how sofia-sip is going
 	 * to help us here.
 	 */
+
+	cause2status(_leg->cause, &sip_cause, &sip_phrase, &reason_text);
+	snprintf(reason, sizeof reason, "Q.850;cause=%u;text=\"%s\"", _leg->cause, reason_text);
+
 	switch (leg->state) {
 	case SIP_CC_INITIAL:
 		LOGP(DSIP, LOGL_NOTICE, "Canceling leg(%p) in int state\n", leg);
@@ -330,7 +340,8 @@ static void sip_release_call(struct call_leg *_leg)
 		if (leg->dir == SIP_DIR_MT)
 			nua_cancel(leg->nua_handle, TAG_END());
 		else {
-			nua_respond(leg->nua_handle, SIP_486_BUSY_HERE,
+			nua_respond(leg->nua_handle, sip_cause, sip_phrase,
+					SIPTAG_REASON_STR(reason),
 					TAG_END());
 			nua_handle_destroy(leg->nua_handle);
 			call_leg_release(&leg->base);

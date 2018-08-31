@@ -43,6 +43,8 @@ struct call_leg {
 	struct call *call;
 
 	bool in_release;
+	/* Field to hold GSM 04.08 Cause Value. Section 10.5.4.11 Table 10.86 */
+	int cause;
 
 	/**
 	 * RTP data
@@ -130,6 +132,8 @@ struct mncc_call_leg {
 	int rsp_wanted;
 
 	struct mncc_connection *conn;
+	/* Field to hold GSM 04.08 Cause Value. Section 10.5.4.11 Table 10.86 */
+	int cause;
 };
 
 extern struct llist_head g_call_list;
