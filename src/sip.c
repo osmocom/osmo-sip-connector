@@ -148,6 +148,75 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 			talloc_strdup(leg, to));
 }
 
+/* Sofia SIP definitions come with error code numbers and strings, this
+ * map allows us to reuse the existing definitions.
+ * The map is in priority order. The first matching entry found
+ * will be used.
+ */
+
+static struct cause_map {
+	int sip_status;
+	const char *sip_phrase;
+	int gsm48_cause;
+	const char *q850_reason;
+} cause_map[] = {
+	{ SIP_200_OK,				GSM48_CC_CAUSE_NORM_CALL_CLEAR,	"Normal Call Clearing" },
+	{ SIP_403_FORBIDDEN,			GSM48_CC_CAUSE_CALL_REJECTED,	"Call Rejected" },
+	{ SIP_401_UNAUTHORIZED,			GSM48_CC_CAUSE_CALL_REJECTED,	"Call Rejected" },
+	{ SIP_402_PAYMENT_REQUIRED,		GSM48_CC_CAUSE_CALL_REJECTED,	"Call Rejected" },
+	{ SIP_407_PROXY_AUTH_REQUIRED,		GSM48_CC_CAUSE_CALL_REJECTED,	"Call Rejected" },
+	{ SIP_603_DECLINE,			GSM48_CC_CAUSE_CALL_REJECTED,	"Call Rejected" },
+	{ SIP_406_NOT_ACCEPTABLE,		GSM48_CC_CAUSE_CHAN_UNACCEPT,	"Channel Unacceptable" },
+	{ SIP_404_NOT_FOUND,			GSM48_CC_CAUSE_UNASSIGNED_NR,	"Unallocated Number" },
+	{ SIP_485_AMBIGUOUS,			GSM48_CC_CAUSE_NO_ROUTE,	"No Route to Destination" },
+	{ SIP_604_DOES_NOT_EXIST_ANYWHERE,	GSM48_CC_CAUSE_NO_ROUTE,	"No Route to Destination" },
+	{ SIP_504_GATEWAY_TIME_OUT,		GSM48_CC_CAUSE_RECOVERY_TIMER,	"Recovery on Timer Expiry" },
+	{ SIP_408_REQUEST_TIMEOUT,		GSM48_CC_CAUSE_RECOVERY_TIMER,	"Recovery on Timer Expiry" },
+	{ SIP_410_GONE,				GSM48_CC_CAUSE_NUMBER_CHANGED,	"Number Changed" },
+	{ SIP_416_UNSUPPORTED_URI,		GSM48_CC_CAUSE_INVAL_TRANS_ID, 	"Invalid Call Reference Value" },
+	{ SIP_420_BAD_EXTENSION,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_414_REQUEST_URI_TOO_LONG,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_413_REQUEST_TOO_LARGE,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_421_EXTENSION_REQUIRED,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_423_INTERVAL_TOO_BRIEF,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_505_VERSION_NOT_SUPPORTED,	GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_513_MESSAGE_TOO_LARGE,		GSM48_CC_CAUSE_INTERWORKING,	"Interworking, Unspecified" },
+	{ SIP_480_TEMPORARILY_UNAVAILABLE,	GSM48_CC_CAUSE_USER_NOTRESPOND,	"No User Responding" },
+	{ SIP_503_SERVICE_UNAVAILABLE,		GSM48_CC_CAUSE_RESOURCE_UNAVAIL,"Resource Unavailable, Unspecified" },
+	{ SIP_503_SERVICE_UNAVAILABLE, 		GSM48_CC_CAUSE_TEMP_FAILURE,	"Temporary Failure" },
+	{ SIP_503_SERVICE_UNAVAILABLE, 		GSM48_CC_CAUSE_SWITCH_CONG,	"Switching Equipment Congestion" },
+	{ SIP_400_BAD_REQUEST, 			GSM48_CC_CAUSE_TEMP_FAILURE,	"Temporary Failure" },
+	{ SIP_481_NO_CALL, 			GSM48_CC_CAUSE_TEMP_FAILURE,	"Temporary Failure" },
+	{ SIP_500_INTERNAL_SERVER_ERROR, 	GSM48_CC_CAUSE_TEMP_FAILURE,	"Temporary Failure" },
+	{ SIP_486_BUSY_HERE,			GSM48_CC_CAUSE_USER_BUSY,	"User Busy" },
+	{ SIP_600_BUSY_EVERYWHERE,		GSM48_CC_CAUSE_USER_BUSY,	"User Busy" },
+	{ SIP_484_ADDRESS_INCOMPLETE,		GSM48_CC_CAUSE_INV_NR_FORMAT,	"Invalid Number Format (addr incomplete)" },
+	{ SIP_488_NOT_ACCEPTABLE,		GSM48_CC_CAUSE_INCOMPAT_DEST,	"Incompatible Destination" },
+	{ SIP_606_NOT_ACCEPTABLE,		GSM48_CC_CAUSE_INCOMPAT_DEST,	"Incompatible Destination" },
+	{ SIP_502_BAD_GATEWAY,			GSM48_CC_CAUSE_DEST_OOO,	"Destination Out of Order" },
+	{ SIP_503_SERVICE_UNAVAILABLE,		GSM48_CC_CAUSE_NETWORK_OOO,	"Network Out of Order" },
+	{ SIP_405_METHOD_NOT_ALLOWED,		GSM48_CC_CAUSE_SERV_OPT_UNAVAIL,"Service or Option Not Implemented" },
+	{ SIP_501_NOT_IMPLEMENTED,		GSM48_CC_CAUSE_SERV_OPT_UNIMPL,	"Service or Option Not Implemented" },
+	{ SIP_415_UNSUPPORTED_MEDIA,		GSM48_CC_CAUSE_SERV_OPT_UNIMPL,	"Service or Option Not Implemented" },
+	{ SIP_406_NOT_ACCEPTABLE,		GSM48_CC_CAUSE_SERV_OPT_UNIMPL,	"Service or Option Not Implemented" },
+	{ SIP_482_LOOP_DETECTED,		GSM48_CC_CAUSE_PRE_EMPTION,	"Exchange Routing Error" },
+	{ SIP_483_TOO_MANY_HOPS,		GSM48_CC_CAUSE_PRE_EMPTION,	"Exchange Routing Error" },
+	{ SIP_503_SERVICE_UNAVAILABLE,		GSM48_CC_CAUSE_BEARER_CA_UNAVAIL,"Bearer Capability Not Available" },
+	{ SIP_480_TEMPORARILY_UNAVAILABLE,	GSM48_CC_CAUSE_NORMAL_UNSPEC,	"Normal, Unspecified" }
+};
+
+static int status2cause(int status)
+{
+	uint8_t i;
+
+	for (i = 0; i < ARRAY_SIZE(cause_map) - 1; i++) {
+		if (cause_map[i].sip_status == status) {
+			return cause_map[i].gsm48_cause;
+		}
+	}
+	return GSM48_CC_CAUSE_NORMAL_UNSPEC;
+}
+
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
 	LOGP(DSIP, LOGL_DEBUG, "SIP event(%u) status(%d) phrase(%s) %p\n",
@@ -217,6 +286,25 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 	}
 }
 
+static void cause2status(int cause, int *sip_status, const char **sip_phrase, const char **reason_text)
+{
+	uint8_t i;
+
+	for (i = 0; i < ARRAY_SIZE(cause_map) - 1; i++) {
+		if (cause_map[i].gsm48_cause == cause) {
+			*sip_status = cause_map[i].sip_status;
+			*sip_phrase = cause_map[i].sip_phrase;
+			*reason_text = cause_map[i].q850_reason;
+			LOGP(DSIP, LOGL_DEBUG, "%s(): Mapping cause(%d) to status(%d)\n",
+				__func__, cause, *sip_status);
+			return;
+		}
+	}
+	LOGP(DSIP, LOGL_ERROR, "%s(): Cause(%d) not found in map.\n", __func__, cause);
+	*sip_status = cause_map[i].sip_status;
+	*sip_phrase = cause_map[i].sip_phrase;
+	*reason_text = cause_map[i].q850_reason;
+}
 
 static void sip_release_call(struct call_leg *_leg)
 {
