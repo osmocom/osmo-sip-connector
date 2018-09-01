@@ -298,12 +298,12 @@ static void cause2status(int cause, int *sip_status, const char **sip_phrase, co
 			*sip_status = cause_map[i].sip_status;
 			*sip_phrase = cause_map[i].sip_phrase;
 			*reason_text = cause_map[i].q850_reason;
-			LOGP(DSIP, LOGL_DEBUG, "%s(): Mapping cause(%d) to status(%d)\n",
-				__func__, cause, *sip_status);
+			LOGP(DSIP, LOGL_DEBUG, "%s(): Mapping cause(%s) to status(%d)\n",
+				__func__, gsm48_cc_cause_name(cause), *sip_status);
 			return;
 		}
 	}
-	LOGP(DSIP, LOGL_ERROR, "%s(): Cause(%d) not found in map.\n", __func__, cause);
+	LOGP(DSIP, LOGL_ERROR, "%s(): Cause(%s) not found in map.\n", __func__, gsm48_cc_cause_name(cause));
 	*sip_status = cause_map[i].sip_status;
 	*sip_phrase = cause_map[i].sip_phrase;
 	*reason_text = cause_map[i].q850_reason;
@@ -327,7 +327,7 @@ static void sip_release_call(struct call_leg *_leg)
 	 * to help us here.
 	 */
 
-	LOGP(DSIP, LOGL_DEBUG, "%s(): Release with MNCC cause(%d)\n", __func__, _leg->cause);
+	LOGP(DSIP, LOGL_DEBUG, "%s(): Release with MNCC cause(%s)\n", __func__, gsm48_cc_cause_name(_leg->cause));
 	cause2status(_leg->cause, &sip_cause, &sip_phrase, &reason_text);
 	snprintf(reason, sizeof reason, "Q.850;cause=%u;text=\"%s\"", _leg->cause, reason_text);
 
