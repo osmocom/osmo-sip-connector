@@ -27,6 +27,24 @@ PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.11.0)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.11.0)
 PKG_CHECK_MODULES(SOFIASIP, sofia-sip-ua-glib >= 1.12.0)
 
+AC_ARG_ENABLE(werror,
+	[AS_HELP_STRING(
+		[--enable-werror],
+		[Turn all compiler warnings into errors, with exceptions:
+		 a) deprecation (allow upstream to mark deprecation without breaking builds);
+		 b) "#warning" pragmas (allow to remind ourselves of errors without breaking builds)
+		]
+	)],
+	[werror=$enableval], [werror="no"])
+if test x"$werror" = x"yes"
+then
+	WERROR_FLAGS="-Werror"
+	WERROR_FLAGS+=" -Wno-error=deprecated -Wno-error=deprecated-declarations"
+	WERROR_FLAGS+=" -Wno-error=cpp" # "#warning"
+	CFLAGS="$CFLAGS $WERROR_FLAGS"
+	CPPFLAGS="$CPPFLAGS $WERROR_FLAGS"
+fi
+
 AC_ARG_ENABLE([vty_tests],
 		AC_HELP_STRING([--enable-vty-tests],
 				[Include the VTY/CTRL tests in make check (deprecated)
@@ -46,6 +64,11 @@ fi
 AC_MSG_CHECKING([whether to enable VTY/CTRL tests])
 AC_MSG_RESULT([$enable_ext_tests])
 AM_CONDITIONAL(ENABLE_EXT_TESTS, test "x$enable_ext_tests" = "xyes")
+
+AC_MSG_RESULT([CPPFLAGS="$CPPFLAGS"])
+AC_MSG_RESULT([CFLAGS="$CFLAGS"])
+AC_MSG_RESULT([CXXFLAGS="$CXXFLAGS"])
+AC_MSG_RESULT([LDFLAGS="$LDFLAGS"])
 
 AC_OUTPUT(
 	src/Makefile
