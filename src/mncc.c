@@ -514,9 +514,10 @@ static void check_disc_ind(struct mncc_connection *conn, const char *buf, int rc
 	mncc_send(leg->conn, MNCC_REL_REQ, leg->callref);
 
 	other_leg = call_leg_other(&leg->base);
-	if (other_leg)
+	if (other_leg) {
 		other_leg->cause = data->cause.value;
 		other_leg->release_call(other_leg);
+	}
 }
 
 static void check_rel_ind(struct mncc_connection *conn, const char *buf, int rc)
@@ -533,9 +534,10 @@ static void check_rel_ind(struct mncc_connection *conn, const char *buf, int rc)
 	else {
 		struct call_leg *other_leg;
 		other_leg = call_leg_other(&leg->base);
-		if (other_leg)
+		if (other_leg) {
 			other_leg->cause = data->cause.value;
 			other_leg->release_call(other_leg);
+		}
 	}
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n", data->callref);
 	mncc_leg_release(leg);
@@ -581,9 +583,10 @@ static void check_rej_ind(struct mncc_connection *conn, const char *buf, int rc)
 
 	leg->cause = data->cause.value;
 	other_leg = call_leg_other(&leg->base);
-	if (other_leg)
+	if (other_leg) {
 		other_leg->cause = data->cause.value;
 		other_leg->release_call(other_leg);
+	}
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was rejected.\n", data->callref);
 	mncc_leg_release(leg);
 }
