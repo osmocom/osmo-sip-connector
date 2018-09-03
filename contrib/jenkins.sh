@@ -27,7 +27,7 @@ echo
 set -x
 
 autoreconf --install --force
-./configure --enable-vty-tests --enable-external-tests
+./configure --enable-werror --enable-vty-tests --enable-external-tests
 $MAKE $PARALLEL_MAKE
 $MAKE check \
   || cat-testlogs.sh
