@@ -1,6 +1,5 @@
 [Unit]
 Description=Osmo SIP Connector
-Wants=osmo-sip-connector.service
 
 [Service]
 Type=simple
