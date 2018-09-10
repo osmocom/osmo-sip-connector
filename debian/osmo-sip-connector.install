@@ -1,1 +1,2 @@
+lib/systemd/system/osmo-sip-connector.service
 usr/bin/osmo-sip-connector

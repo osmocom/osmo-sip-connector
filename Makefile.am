@@ -1,9 +1,12 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2 1.6
 
-SUBDIRS = src tests
+SUBDIRS = src tests contrib
 
 BUILT_SOURCES = $(top_srcdir)/.version
 EXTRA_DIST = git-version-gen osmoappdesc.py .version
+
+DISTCHECK_CONFIGURE_FLAGS = \
+	--with-systemdsystemunitdir=$$dc_install_base/$(systemdsystemunitdir)
 
 @RELMAKE@
 
