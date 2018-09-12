@@ -91,4 +91,6 @@ AC_OUTPUT(
 	tests/Makefile
 	contrib/Makefile
 	contrib/systemd/Makefile
+	doc/Makefile
+	doc/examples/Makefile
 	Makefile)

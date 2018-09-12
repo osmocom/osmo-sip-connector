@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2 1.6
 
-SUBDIRS = src tests contrib
+SUBDIRS = src tests contrib doc
 
 BUILT_SOURCES = $(top_srcdir)/.version
 EXTRA_DIST = git-version-gen osmoappdesc.py .version

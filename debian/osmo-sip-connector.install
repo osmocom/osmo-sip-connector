@@ -1,2 +1,4 @@
+etc/osmocom/osmo-sip-connector.cfg
 lib/systemd/system/osmo-sip-connector.service
 usr/bin/osmo-sip-connector
+usr/share/doc/osmo-sip-connector/examples/osmo-sip-connector/osmo-sip-connector.cfg
