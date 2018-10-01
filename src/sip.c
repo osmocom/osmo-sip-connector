@@ -21,6 +21,7 @@
 #include "sip.h"
 #include "app.h"
 #include "call.h"
+#include "ctr.h"
 #include "logging.h"
 #include "sdp.h"
 
@@ -77,6 +78,15 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 	leg->state = SIP_CC_CONNECTED;
 	other->connect_call(other);
 	nua_ack(leg->nua_handle, TAG_END());
+	// rate_ctr_inc2(agent->ctrg, SIP_CTR_CALL_CONNECTED);
+}
+
+static void new_call_failure(struct sip_agent *agent, nua_handle_t *nh,
+	int status, char const* phrase)
+{
+	nua_respond(nh, status, phrase, TAG_END());
+	nua_handle_destroy(nh);
+	rate_ctr_inc2(agent->ctrg, SIP_CTR_CALL_FAILED);
 }
 
 static void new_call(struct sip_agent *agent, nua_handle_t *nh,
@@ -90,16 +100,14 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 
 	if (!sdp_screen_sdp(sip)) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
-		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
-		nua_handle_destroy(nh);
+		new_call_failure(agent, nh, SIP_406_NOT_ACCEPTABLE);
 		return;
 	}
 
 	call = call_sip_create();
 	if (!call) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
-		nua_respond(nh, SIP_500_INTERNAL_SERVER_ERROR, TAG_END());
-		nua_handle_destroy(nh);
+		new_call_failure(agent, nh, SIP_500_INTERNAL_SERVER_ERROR);
 		return;
 	}
 
@@ -110,8 +118,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 
 	if (!to || !from) {
 		LOGP(DSIP, LOGL_ERROR, "Unknown from/to for invite.\n");
-		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
-		nua_handle_destroy(nh);
+		new_call_failure(agent, nh, SIP_406_NOT_ACCEPTABLE);
 		return;
 	}
 
@@ -128,8 +135,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	 */
 	if (!sdp_extract_sdp(leg, sip, true)) {
 		LOGP(DSIP, LOGL_ERROR, "leg(%p) no audio, releasing\n", leg);
-		nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
-		nua_handle_destroy(nh);
+		new_call_failure(agent, nh, SIP_406_NOT_ACCEPTABLE);
 		call_leg_release(&leg->base);
 		return;
 	}
@@ -354,6 +360,8 @@ static void sip_release_call(struct call_leg *_leg)
 		nua_bye(leg->nua_handle, TAG_END());
 		break;
 	}
+
+	// rate_ctr_inc2(agent->ctrg, SIP_CTR_CALL_RELEASED);
 }
 
 static void sip_ring_call(struct call_leg *_leg)
@@ -364,6 +372,7 @@ static void sip_ring_call(struct call_leg *_leg)
 	leg = (struct sip_call_leg *) _leg;
 
 	nua_respond(leg->nua_handle, SIP_180_RINGING, TAG_END());
+	// rate_ctr_inc2(agent->ctrg, SIP_CTR_CALL_INITIATED);
 }
 
 static void sip_connect_call(struct call_leg *_leg)
@@ -495,9 +504,11 @@ static void sip_logger(void *stream, char const *fmt, va_list ap)
 	osmo_vlogp(DSIP, LOGL_NOTICE, "", 0, 0, fmt, ap);
 }
 
-void sip_agent_init(struct sip_agent *agent, struct app_config *app)
+void sip_agent_init(struct sip_agent *agent, struct app_config *app,
+	struct rate_ctr_group *ctrg)
 {
 	agent->app = app;
+	agent->ctrg = ctrg;
 
 	su_init();
 	su_home_init(&agent->home);

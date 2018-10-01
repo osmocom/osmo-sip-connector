@@ -26,6 +26,7 @@
 #include "mncc.h"
 #include "app.h"
 #include "call.h"
+#include "ctr.h"
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/utils.h>
@@ -113,12 +114,21 @@ int main(int argc, char **argv)
 {
 	int rc;
 	GMainLoop *loop;
+	struct rate_ctr_group *ctrg;
 
 	/* initialize osmocom */
 	tall_mncc_ctx = talloc_named_const(NULL, 0, "MNCC CTX");
 	osmo_init_ignore_signals();
 	osmo_init_logging2(tall_mncc_ctx, &mncc_sip_info);
 	osmo_stats_init(tall_mncc_ctx);
+
+	/* init statistics */
+	rate_ctr_init(tall_mncc_ctx);
+	ctrg = rate_ctr_group_alloc(tall_mncc_ctx, &sip_ctrg_desc, 0);
+	if (!ctrg) {
+		LOGP(DAPP, LOGL_ERROR, "Cannot allocate global counter group!\n");
+		exit(1);
+	}
 
 	mncc_sip_vty_init();
 	logging_vty_add_cmds(&mncc_sip_info);
@@ -144,7 +154,7 @@ int main(int argc, char **argv)
 	mncc_connection_start(&g_app.mncc.conn);
 
 	/* sofia sip */
-	sip_agent_init(&g_app.sip.agent, &g_app);
+	sip_agent_init(&g_app.sip.agent, &g_app, ctrg);
 	rc = sip_agent_start(&g_app.sip.agent);
 	if (rc < 0)
 		LOGP(DSIP, LOGL_ERROR,

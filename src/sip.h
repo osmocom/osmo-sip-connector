@@ -6,6 +6,7 @@
 #include <sofia-sip/nua_tag.h>
 #include <sofia-sip/su_glib.h>
 #include <sofia-sip/nua.h>
+#include <osmocom/core/rate_ctr.h>
 
 struct app_config;
 struct call;
@@ -16,9 +17,12 @@ struct sip_agent {
 	su_root_t		*root;
 
 	nua_t			*nua;
+
+	struct rate_ctr_group	*ctrg;
 };
 
-void sip_agent_init(struct sip_agent *agent, struct app_config *app);
+void sip_agent_init(struct sip_agent *agent, struct app_config *app,
+	struct rate_ctr_group *ctrg);
 int sip_agent_start(struct sip_agent *agent);
 
 int sip_create_remote_leg(struct sip_agent *agent, struct call *call);
