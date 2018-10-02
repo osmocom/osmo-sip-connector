@@ -54,15 +54,15 @@ struct call_leg {
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
 
-        /**
-         * Remote started to ring/alert
-         */
-        void (*ring_call)(struct call_leg *);
+	/**
+	 * Remote started to ring/alert
+	 */
+	void (*ring_call)(struct call_leg *);
 
-        /**
-         * Remote picked up
-         */
-        void (*connect_call)(struct call_leg *);
+	/**
+	 * Remote picked up
+	 */
+	void (*connect_call)(struct call_leg *);
 
 	/**
 	 * Set by the call_leg implementation and will be called
