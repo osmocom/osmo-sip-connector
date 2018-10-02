@@ -65,20 +65,21 @@ static void start_cmd_timer(struct mncc_call_leg *leg, uint32_t expected_next)
 
 	leg->cmd_timeout.cb = cmd_timeout;
 	leg->cmd_timeout.data = leg;
+	LOGP(DMNCC, LOGL_DEBUG, "Starting Timer for %s\n", osmo_mncc_name(expected_next));
 	osmo_timer_schedule(&leg->cmd_timeout, 5, 0);
 }
 
 static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
 {
 	if (leg->rsp_wanted != got_res) {
-		LOGP(DMNCC, LOGL_ERROR, "Wanted rsp(%u) but got(%u) for leg(%u)\n",
-			leg->rsp_wanted, got_res, leg->callref);
+		LOGP(DMNCC, LOGL_ERROR, "Wanted rsp(%s) but got(%s) for leg(%u)\n",
+			osmo_mncc_name(leg->rsp_wanted), osmo_mncc_name(got_res), leg->callref);
 		return;
 	}
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"Got response(0x%x), stopping timer on leg(%u)\n",
-		got_res, leg->callref);
+		"Got response(%s), stopping timer on leg(%u)\n",
+		osmo_mncc_name(got_res), leg->callref);
 	osmo_timer_del(&leg->cmd_timeout);
 }
 
@@ -127,6 +128,7 @@ static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc, uint
 	 * static struct?
 	 */
 	rc = write(conn->fd.fd, mncc, sizeof(*mncc));
+	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(mncc->msg_type));
 	if (rc != sizeof(*mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
 		close_connection(conn);
