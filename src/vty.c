@@ -256,39 +256,36 @@ DEFUN(show_calls_sum, show_calls_sum_cmd,
 	"show calls summary",
 	SHOW_STR "Current calls\nBrief overview\n")
 {
-	struct call *call;
-
-	llist_for_each_entry(call, &g_call_list, entry) {
-		char *initial_type, *initial_state;
-		char *remote_type, *remote_state;
-
-		initial_type = initial_state = NULL;
-		remote_type = remote_state = NULL;
-
-		if (call->initial) {
-			initial_type = talloc_strdup(tall_mncc_ctx,
-						call_leg_type(call->initial));
-			initial_state = talloc_strdup(tall_mncc_ctx,
-						call_leg_state(call->initial));
-		}
-
-		if (call->remote) {
-			remote_type = talloc_strdup(tall_mncc_ctx,
-						call_leg_type(call->remote));
-			remote_state = talloc_strdup(tall_mncc_ctx,
-						call_leg_state(call->remote));
-		}
-
-		vty_out(vty, "Call(%u) initial(type=%s,state=%s) remote(type=%s,state=%s)%s",
-			call->id, initial_type, initial_state, remote_type, remote_state,
-			VTY_NEWLINE);
-
-		talloc_free(initial_type);
-		talloc_free(initial_state);
-		talloc_free(remote_type);
-		talloc_free(remote_state);
+	/* don't print a table for zero active calls */
+	if(llist_empty(&g_call_list)) {
+		vty_out(vty, "No active calls.%s", VTY_NEWLINE);
+		return CMD_SUCCESS;
 	}
 
+	/* table head */
+	vty_out(vty, "ID    From                             To                               State%s", VTY_NEWLINE);
+	vty_out(vty, "----- -------------------------------- -------------------------------- ----------%s",
+		VTY_NEWLINE);
+
+	/* iterate over calls */
+	struct call *call;
+	llist_for_each_entry(call, &g_call_list, entry) {
+		/* only look at the initial=MNCC call */
+		if(call->initial->type == CALL_TYPE_MNCC) {
+			struct mncc_call_leg *leg = (struct mncc_call_leg *) call->initial;
+
+			/* table row */
+			char *called = talloc_strdup(tall_mncc_ctx, leg->called.number);
+			char *calling = talloc_strdup(tall_mncc_ctx, leg->calling.number);
+			char *state = talloc_strdup(tall_mncc_ctx, call_leg_state(call->initial));
+			vty_out(vty, "%5u %-32s %-32s %s%s", call->id, calling, called, state, VTY_NEWLINE);
+
+			/* clean up */
+			talloc_free(called);
+			talloc_free(calling);
+			talloc_free(state);
+		}
+	}
 	return CMD_SUCCESS;
 }
 
