@@ -81,6 +81,7 @@ static void print_help(void)
 	printf("OsmoSIPcon: MNCC to SIP bridge\n");
 	printf("  -h --help\tthis text\n");
 	printf("  -c --config-file NAME\tThe config file to use [%s]\n", config_file);
+	printf("  -V --version\tPrint the version number\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -90,10 +91,11 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"config-file", 1, 0, 'c'},
+			{"version", 0, 0, 'V' },
 			{NULL, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:",
+		c = getopt_long(argc, argv, "hc:V",
 			long_options, &option_index);
 		if (c == -1)
 			break;
@@ -104,6 +106,10 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 		case 'c':
 			config_file = optarg;
+			break;
+		case 'V':
+			print_version(1);
+			exit(EXIT_SUCCESS);
 			break;
 		}
 	}
