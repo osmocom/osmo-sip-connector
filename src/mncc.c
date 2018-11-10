@@ -397,14 +397,16 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 
 static int continue_setup(struct mncc_connection *conn, const struct gsm_mncc *mncc)
 {
-	if (mncc->called.plan != GSM340_PLAN_ISDN) {
+	switch (mncc->called.plan) {
+	case GSM340_PLAN_UNKNOWN:
+	case GSM340_PLAN_ISDN:
+		return 1;
+	default:
 		LOGP(DMNCC, LOGL_ERROR,
-			"leg(%u) has non(%d) ISDN dial plan. not supported.\n",
+			"leg(%u) has unsupported(%d) dial plan.\n",
 			mncc->callref, mncc->called.plan);
 		return 0;
 	}
-
-	return 1;
 }
 
 /* Check + Process MNCC_SETUP_IND (MO call) */
