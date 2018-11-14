@@ -22,3 +22,14 @@ stamp-h1
 osmo-sip-connector
 .tarball-version
 .version
+
+# manuals
+doc/manuals/*.html
+doc/manuals/*.svg
+doc/manuals/*.pdf
+doc/manuals/*__*.png
+doc/manuals/*.check
+doc/manuals/generated/
+doc/manuals/osmomsc-usermanual.xml
+doc/manuals/common
+doc/manuals/build
