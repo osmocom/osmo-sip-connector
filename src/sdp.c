@@ -168,7 +168,7 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
 	struct in_addr net = { .s_addr = htonl(other->ip) };
 	char *fmtp_str = NULL, *sdp;
 
-	leg->wanted_codec = app_media_name(other->payload_msg_type);
+	leg->wanted_codec = app_media_name(GSM_TCHF_FRAME); //other->payload_msg_type);
 
 	if (strcmp(leg->wanted_codec, "AMR") == 0)
 		fmtp_str = talloc_asprintf(leg, "a=fmtp:%d octet-align=1\r\n", other->payload_type);
