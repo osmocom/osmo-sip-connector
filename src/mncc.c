@@ -320,7 +320,7 @@ static void continue_mt_call(struct mncc_call_leg *leg)
 		return;
 
 	/* assume the type is compatible */
-	other_leg->payload_type = 98; //leg->base.payload_type;
+	other_leg->payload_type = 112; //leg->base.payload_type;
 }
 
 static void continue_call(struct mncc_call_leg *leg)
@@ -382,7 +382,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	/* extract information about where the RTP is */
 	leg->base.ip = rtp->ip;
 	leg->base.port = rtp->port;
-	leg->base.payload_type = 98;//rtp->payload_type;
+	leg->base.payload_type = 112;//rtp->payload_type;
 	leg->base.payload_msg_type = rtp->payload_msg_type;
 
 	/* TODO.. now we can continue with the call */
