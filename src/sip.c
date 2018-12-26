@@ -429,14 +429,14 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 
         switch (leg->base.call->ran) {
         case 1:
-                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-GERAN"), TAG_END());
+                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-GERAN"), TAG_END());
                 break;
         case 2:
-                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UTRAN"), TAG_END());
+                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UTRAN"), TAG_END());
                 break;
         case 0:
         default:
-                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UNKNOWN"), TAG_END());
+                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UNKNOWN"), TAG_END());
                 break;
         }
 
