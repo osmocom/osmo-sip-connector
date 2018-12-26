@@ -452,6 +452,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 			"MNCC leg(%u) failed to allocate call\n", data->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
 	}
+        call->ran = data->ran;
 
 	leg = (struct mncc_call_leg *) call->initial;
 	leg->base.connect_call = mncc_call_leg_connect;

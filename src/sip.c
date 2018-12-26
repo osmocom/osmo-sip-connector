@@ -427,6 +427,19 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				agent->app->sip.remote_port);
 	char *sdp = sdp_create_file(leg, other);
 
+        switch (leg->base.call->ran) {
+        case 1:
+                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-GERAN"));
+                break;
+        case 2:
+                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UTRAN"));
+                break;
+        case 0:
+        default:
+                nua_set_params(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UNKNOWN"));
+                break;
+        }
+
 	leg->state = SIP_CC_INITIAL;
 	leg->dir = SIP_DIR_MT;
 	nua_invite(leg->nua_handle,

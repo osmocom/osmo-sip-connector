@@ -30,6 +30,8 @@ struct call {
 
 	const char *source;
 	const char *dest;
+
+        uint8_t ran;
 };
 
 enum {
