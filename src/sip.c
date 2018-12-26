@@ -416,6 +416,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
 	struct call_leg *other = leg->base.call->initial;
+        char *paccess_rat_hdr = "";
 
 	char *from = talloc_asprintf(leg, "sip:%s@%s:%d",
 				calling_num,
@@ -429,14 +430,14 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 
         switch (leg->base.call->ran) {
         case 1:
-                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-GERAN"), TAG_END());
+                paccess_rat_hdr = "P-Access-Network-Info: 3GPP-GERAN";
                 break;
         case 2:
-                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UTRAN"), TAG_END());
+                paccess_rat_hdr = "P-Access-Network-Info: 3GPP-UTRAN";
                 break;
         case 0:
         default:
-                nua_set_hparams(leg->nua_handle, SIPTAG_HEADER_STR("P-Access-Network-Info: 3GPP-UNKNOWN"), TAG_END());
+                paccess_rat_hdr = "P-Access-Network-Info: 3GPP-UNKNOWN";
                 break;
         }
 
@@ -445,6 +446,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	nua_invite(leg->nua_handle,
 			SIPTAG_FROM_STR(from),
 			SIPTAG_TO_STR(to),
+                        SIPTAG_HEADER_STR(paccess_rat_hdr),
 			NUTAG_MEDIA_ENABLE(0),
 			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
 			SIPTAG_PAYLOAD_STR(sdp),
