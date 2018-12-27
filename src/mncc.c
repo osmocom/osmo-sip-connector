@@ -847,7 +847,8 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 
 	memcpy(&msg_type, buf, 4);
 
-	LOGP(DMNCC, LOGL_INFO, "MNCC rcvd message type: %s\n", osmo_mncc_name(msg_type));
+	LOGP(DMNCC, LOGL_ERROR, "OK: MNCC rcvd message type: %d\n",msg_type);
+        //LOGP(DMNCC, LOGL_DEBUG, "leg(%u) was released.\n",
 
 	switch (msg_type) {
 	case MNCC_SOCKET_HELLO:
