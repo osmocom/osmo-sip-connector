@@ -1,3 +1,60 @@
+osmo-sip-connector (1.2.0) unstable; urgency=medium
+
+  [ Keith ]
+  * Logging: Log mncc_names in mncc_data()
+  * Add Cause to DISCONNECT and RELEASE Requests
+  * Add SIP <-> MNCC Cause Map
+  * Implement Cause Mapping
+  * Logging: Add debug logging for status/causes
+  * Cosmetic: correct spelling error in logging
+  * Log using GSM48 Cause Value strings
+  * Logging: Further use of osmo_mncc_name() in logging
+
+  [ Harald Welte ]
+  * debian/rules: Don't overwrite .tarball-version
+
+  [ Keith Whyte ]
+  * Logging: Log RTP IP in dotted quad format.
+  * Use htonl, not ntohl before inet_ntoa()
+  * Allow GSM340_PLAN_UNKNOWN on MNCC originated leg.
+
+  [ Pau Espin Pedrol ]
+  * mncc: Fix missing conditional clause
+  * configure.ac: Introduce --enable-werror option
+  * jenkins.sh: Use --enable-werror option
+  * debian: Use osmo-sip-connector.service from contrib
+  * Install systemd services with autotools
+  * Install sample cfg file to /etc/osmocom
+
+  [ Oliver Smith ]
+  * Fix typo in -h: s/hekp/help
+  * cosmetic: call.h: spaces -> tabs for consistency
+  * vty: make 'show calls summary' more userfriendly
+  * Add --version cmdline option
+  * build manuals moved here from osmo-gsm-manuals.git
+  * Fix DISTCHECK_CONFIGURE_FLAGS override
+  * contrib/jenkins.sh: build and publish manuals
+  * contrib: fix makedistcheck with disabled systemd
+
+  [ Daniel Willmann ]
+  * Fix mncc socket name
+  * Add VTY reference for osmo-sip-connector
+  * Add manual for OsmoSIPConnector
+  * osmo-sip-connector: Explicitly note OsmoMSC config with external MNCC
+
+  [ Neels Hofmeyr ]
+  * configure.ac: add --enable-sanitize
+  * Importing history from osmo-gsm-manuals.git
+  * sip-connector: update vty reference
+
+  [ Vadim Yanitskiy ]
+  * OsmoSIPConnector: fix: avoid OsmoMGW/OsmoSIPcon confusion
+
+  [ Philipp Maier ]
+  * running: Add note about DTMF support
+
+ -- Harald Welte <laforge@gnumonks.org>  Mon, 21 Jan 2019 18:54:09 +0100
+
 osmo-sip-connector (1.1.1) unstable; urgency=medium
 
   [ Neels Hofmeyr ]
