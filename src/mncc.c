@@ -409,10 +409,17 @@ static int continue_setup(struct mncc_connection *conn, const struct gsm_mncc *m
 	}
 }
 
+static const struct gsm_mncc_number emergency_number = {
+	.type = CALL_TYPE_MNCC,
+	.plan = GSM48_NPI_UNKNOWN,
+	.number = "emergency",
+};
+
 /* Check + Process MNCC_SETUP_IND (MO call) */
 static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 {
 	const struct gsm_mncc *data;
+	const struct gsm_mncc_number *called;
 	struct call *call;
 	struct mncc_call_leg *leg;
 
@@ -423,14 +430,21 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	}
 
 	data = (const struct gsm_mncc *) buf;
+	called = &data->called;
 
 	/* screen arguments */
 	if ((data->fields & MNCC_F_CALLED) == 0) {
-		LOGP(DMNCC, LOGL_ERROR,
-			"MNCC leg(%u) without called addr fields(%u)\n",
-			data->callref, data->fields);
-		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		if (!data->emergency) {
+			LOGP(DMNCC, LOGL_ERROR,
+				"MNCC leg(%u) without called addr fields(%u)\n",
+				data->callref, data->fields);
+			return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		}
+
+		/* Emergency without a called number present. Use the standard "emergency" number. */
+		called = &emergency_number;
 	}
+
 	if ((data->fields & MNCC_F_CALLING) == 0) {
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC leg(%u) without calling addr fields(%u)\n",
@@ -461,7 +475,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
 	leg->dir = MNCC_DIR_MO;
-	memcpy(&leg->called, &data->called, sizeof(leg->called));
+	memcpy(&leg->called, called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
 
