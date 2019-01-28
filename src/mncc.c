@@ -775,8 +775,14 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 
 	mncc.fields |= MNCC_F_CALLING;
 	mncc.calling.plan = GSM48_NPI_ISDN_E164;
-	mncc.calling.type = GSM48_TON_UNKNOWN;
-	osmo_strlcpy(mncc.calling.number, call->source, sizeof(mncc.calling.number));
+
+	if (call->source && call->source[0] == '+') {
+		mncc.calling.type = GSM48_TON_INTERNATIONAL;
+		OSMO_STRLCPY_ARRAY(mncc.calling.number, call->source + 1);
+	} else {
+		mncc.calling.type = GSM48_TON_UNKNOWN;
+		OSMO_STRLCPY_ARRAY(mncc.calling.number, call->source);
+	}
 
 	if (conn->app->use_imsi_as_id) {
 		snprintf(mncc.imsi, 15, "%s", call->dest);
