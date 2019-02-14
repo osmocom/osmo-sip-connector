@@ -790,7 +790,7 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 		mncc.fields |= MNCC_F_CALLED;
 		mncc.called.plan = GSM48_NPI_ISDN_E164;
 		mncc.called.type = GSM48_TON_UNKNOWN;
-		osmo_strlcpy(mncc.called.number, call->dest, sizeof(mncc.called.number));
+		OSMO_STRLCPY_ARRAY(mncc.called.number, call->dest);
 	}
 
 	/*
