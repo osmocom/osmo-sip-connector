@@ -46,6 +46,7 @@
 
 void *tall_mncc_ctx;
 
+static bool daemonize = false;
 static char *config_file = "osmo-sip-connector.cfg";
 
 static struct log_info_cat mncc_sip_categories[] = {
@@ -79,8 +80,9 @@ static const struct log_info mncc_sip_info = {
 static void print_help(void)
 {
 	printf("OsmoSIPcon: MNCC to SIP bridge\n");
-	printf("  -h --help\tthis text\n");
+	printf("  -h --help\tThis text\n");
 	printf("  -c --config-file NAME\tThe config file to use [%s]\n", config_file);
+	printf("  -D --daemonize\tFork the process into a background daemon\n");
 	printf("  -V --version\tPrint the version number\n");
 }
 
@@ -91,11 +93,12 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"config-file", 1, 0, 'c'},
+			{"daemonize", 0, 0, 'D'},
 			{"version", 0, 0, 'V' },
 			{NULL, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:V",
+		c = getopt_long(argc, argv, "hc:DV",
 			long_options, &option_index);
 		if (c == -1)
 			break;
@@ -106,6 +109,9 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 		case 'c':
 			config_file = optarg;
+			break;
+		case 'D':
+			daemonize = true;
 			break;
 		case 'V':
 			print_version(1);
@@ -158,6 +164,14 @@ int main(int argc, char **argv)
 
 	calls_init();
 	app_setup(&g_app);
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
+	}
 
 	/* marry sofia-sip to glib and glib to libosmocore */
 	loop = g_main_loop_new(NULL, FALSE);
