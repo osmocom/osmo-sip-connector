@@ -104,6 +104,17 @@ static struct mncc_call_leg *mncc_find_leg(uint32_t callref)
 	return NULL;
 }
 
+/* Find a MNCC Call leg (by callref) which is not yet in release */
+static struct mncc_call_leg *mncc_find_leg_not_released(uint32_t callref)
+{
+	struct mncc_call_leg *leg = mncc_find_leg(callref);
+	if (!leg)
+		return NULL;
+	if (leg->base.in_release)
+		return NULL;
+	return leg;
+}
+
 static void mncc_fill_header(struct gsm_mncc *mncc, uint32_t msg_type, uint32_t callref)
 {
 	struct mncc_call_leg *mncc_leg;
@@ -343,7 +354,7 @@ static void check_rtp_connect(struct mncc_connection *conn, const char *buf, int
 	}
 
 	rtp = (const struct gsm_mncc_rtp *) buf;
-	leg = mncc_find_leg(rtp->callref);
+	leg = mncc_find_leg_not_released(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", rtp->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
@@ -373,7 +384,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	}
 
 	rtp = (const struct gsm_mncc_rtp *) buf;
-	leg = mncc_find_leg(rtp->callref);
+	leg = mncc_find_leg_not_released(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
 		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
