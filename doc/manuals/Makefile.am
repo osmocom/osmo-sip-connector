@@ -12,5 +12,6 @@ if BUILD_MANUALS
   VTY_REFERENCE = osmosipconnector-vty-reference.xml
   include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.vty-reference.inc
 
+  OSMO_REPOSITORY = osmo-sip-connector
   include $(OSMO_GSM_MANUALS_DIR)/build/Makefile.common.inc
 endif

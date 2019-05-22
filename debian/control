@@ -9,7 +9,8 @@ Build-Depends: debhelper (>= 7.0.0~),
                libsofia-sip-ua-glib-dev,
                libsofia-sip-ua-dev,
                dh-systemd (>= 1.5),
-               dh-autoreconf
+               dh-autoreconf,
+               osmo-gsm-manuals-dev
 Standards-Version: 3.8.4
 Homepage: https://osmocom.org/projects/osmo-sip-conector/wiki
 Vcs-Git: git://git.osmocom.org/osmo-sip-connector.git
@@ -28,3 +29,12 @@ Priority: extra
 Depends: osmo-sip-connector (= ${binary:Version}), ${misc:Depends}
 Description: Debug symbols for the osmo-sip-connector
  Make debugging possible
+
+Package: osmo-sip-connector-doc
+Architecture: all
+Section: doc
+Priority: optional
+Depends: ${misc:Depends}
+Description: ${misc:Package} PDF documentation
+ Various manuals: user manual, VTY reference manual and/or
+ protocol/interface manuals.
