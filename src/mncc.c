@@ -188,6 +188,8 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	 * FIXME: mncc.payload_msg_type should already be compatible.. but
 	 * payload_type should be different..
 	 */
+	struct in_addr net = { .s_addr = other->ip };
+	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n", inet_ntoa(net), mncc.port);
 	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
 	if (rc != sizeof(mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
@@ -687,14 +689,40 @@ static void check_hold_ind(struct mncc_connection *conn, const char *buf, int rc
 {
 	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
 
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"leg(%u) is req hold. rejecting.\n", leg->callref);
-	mncc_send(leg->conn, MNCC_HOLD_REJ, leg->callref);
+		"leg(%u) is req hold.\n", leg->callref);
+	other_leg = call_leg_other(&leg->base);
+	other_leg->hold_call(other_leg);
+	mncc_send(leg->conn, MNCC_HOLD_CNF, leg->callref);
+	leg->state = MNCC_CC_HOLD;
+}
+
+static void check_retrieve_ind(struct mncc_connection *conn, const char *buf, int rc)
+{
+	const struct gsm_mncc *data;
+	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+
+	leg = find_leg(conn, buf, rc, &data);
+	if (!leg)
+		return;
+
+	LOGP(DMNCC, LOGL_DEBUG,
+		"leg(%u) is req unhold.\n", leg->callref);
+	other_leg = call_leg_other(&leg->base);
+	other_leg->retrieve_call(other_leg);
+	mncc_send(leg->conn, MNCC_RETRIEVE_CNF, leg->callref);
+	/* In case of call waiting/swap, At this point we need to tell the MSC to send
+	 * audio to the port of the original call
+	 */
+	leg->state = MNCC_CC_CONNECTED;
+	send_rtp_connect(leg, other_leg);
 }
 
 static void check_stp_cnf(struct mncc_connection *conn, const char *buf, int rc)
@@ -937,6 +965,9 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		break;
 	case MNCC_HOLD_IND:
 		check_hold_ind(conn, buf, rc);
+		break;
+	case MNCC_RETRIEVE_IND:
+		check_retrieve_ind(conn, buf, rc);
 		break;
 	case MNCC_START_DTMF_IND:
 		check_dtmf_start(conn, buf, rc);

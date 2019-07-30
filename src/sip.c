@@ -98,7 +98,7 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 		return;
 	}
 
-	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now connected.\n", leg);
+	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now connected(%s).\n", leg, sip->sip_call_id->i_id);
 	leg->state = SIP_CC_CONNECTED;
 	other->connect_call(other);
 	nua_ack(leg->nua_handle, TAG_END());
@@ -111,7 +111,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	struct sip_call_leg *leg;
 	const char *from = NULL, *to = NULL;
 
-	LOGP(DSIP, LOGL_DEBUG, "Incoming call handle(%p)\n", nh);
+	LOGP(DSIP, LOGL_DEBUG, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
 
 	if (!sdp_screen_sdp(sip)) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
@@ -158,6 +158,11 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		call_leg_release(&leg->base);
 		return;
 	}
+	struct in_addr net = { .s_addr = leg->base.ip };
+	LOGP(DSIP, LOGL_DEBUG, "SDP Extracted: IP=(%s) PORT=(%u) PAYLOAD=(%u).\n",
+		               inet_ntoa(net),
+		               leg->base.port,
+		               leg->base.payload_type);
 
 	leg->base.release_call = sip_release_call;
 	leg->base.ring_call = sip_ring_call;
@@ -179,6 +184,8 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 
 	char *sdp;
 	sdp_mode_t mode = sdp_sendrecv;
+	uint32_t ip = leg->base.ip;
+	uint16_t port = leg->base.port;
 
 	LOGP(DSIP, LOGL_NOTICE, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
@@ -197,6 +204,9 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		return;
 	}
 
+	struct in_addr net = { .s_addr = leg->base.ip };
+	LOGP(DSIP, LOGL_NOTICE, "pre re-INVITE have IP:port (%s:%u)\n", inet_ntoa(net), leg->base.port);
+
 	if (mode == sdp_sendonly) {
 		/* SIP side places call on HOLD */
 		sdp = sdp_create_file(leg, other, sdp_recvonly);
@@ -210,9 +220,13 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 			call_leg_release(&leg->base);
 			return;
 		}
+		struct in_addr net = { .s_addr = leg->base.ip };
+		LOGP(DSIP, LOGL_NOTICE, "Media IP:port in re-INVITE: (%s:%u)\n", inet_ntoa(net), leg->base.port);
+		if (ip != leg->base.ip || port != leg->base.port) {
+			LOGP(DSIP, LOGL_NOTICE, "re-INVITE changes media connection.\n");
+		}
 		if (other->update_rtp)
 			other->update_rtp(leg->base.call->remote);
-
 		sdp = sdp_create_file(leg, other, sdp_sendrecv);
 	}
 
@@ -297,8 +311,8 @@ static int status2cause(int status)
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
-	LOGP(DSIP, LOGL_DEBUG, "SIP event(%u) status(%d) phrase(%s) %p\n",
-		event, status, phrase, hmagic);
+	LOGP(DSIP, LOGL_DEBUG, "SIP event[%s] status(%d) phrase(%s) %p\n",
+		nua_event_name(event), status, phrase, hmagic);
 
 	if (event == nua_r_invite) {
 		struct sip_call_leg *leg;
@@ -361,6 +375,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 			other->release_call(other);
 	} else if (event == nua_i_invite) {
 		/* new incoming leg or re-INVITE */
+		LOGP(DSIP, LOGL_NOTICE, "Processing INVITE Call-ID: %s\n", sip->sip_call_id->i_id);
 
 		if (status == 100) {
 			struct sip_call_leg *leg = sip_find_leg(nh);
@@ -382,6 +397,8 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		call_leg_release(&leg->base);
 		if (other)
 			other->release_call(other);
+	} else {
+		LOGP(DSIP, LOGL_DEBUG, "Did not handle event[%s] status(%d)\n", nua_event_name(event), status);
 	}
 }
 
