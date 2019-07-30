@@ -163,15 +163,34 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	return true;
 }
 
-char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
+char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode_t mode)
 {
 	struct in_addr net = { .s_addr = htonl(other->ip) };
 	char *fmtp_str = NULL, *sdp;
+	char *mode_attribute;
 
 	leg->wanted_codec = app_media_name(other->payload_msg_type);
 
 	if (strcmp(leg->wanted_codec, "AMR") == 0)
 		fmtp_str = talloc_asprintf(leg, "a=fmtp:%d octet-align=1\r\n", other->payload_type);
+
+	switch (mode) {
+		case sdp_inactive:
+			mode_attribute = "a=inactive\r\n";
+			break;
+		case sdp_sendrecv:
+			mode_attribute = "a=sendrecv\r\n";
+			break;
+		case sdp_sendonly:
+			mode_attribute = "a=sendonly\r\n";
+			break;
+		case sdp_recvonly:
+			mode_attribute = "a=recvonly\r\n";
+			break;
+		default:
+			OSMO_ASSERT(false);
+			break;
+	}
 
 	sdp = talloc_asprintf(leg,
 				"v=0\r\n"
@@ -181,12 +200,14 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other)
 				"t=0 0\r\n"
 				"m=audio %d RTP/AVP %d\r\n"
 				"%s"
-				"a=rtpmap:%d %s/8000\r\n",
+				"a=rtpmap:%d %s/8000\r\n"
+				"%s",
 				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
 				other->port, other->payload_type,
 				fmtp_str ? fmtp_str : "",
 				other->payload_type,
-				leg->wanted_codec);
+				leg->wanted_codec,
+				mode_attribute);
 	talloc_free(fmtp_str);
 	return sdp;
 }

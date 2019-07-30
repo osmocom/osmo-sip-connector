@@ -28,6 +28,7 @@
 
 #include <sofia-sip/sip_status.h>
 #include <sofia-sip/su_log.h>
+#include <sofia-sip/sdp.h>
 
 #include <talloc.h>
 
@@ -385,7 +386,7 @@ static void sip_connect_call(struct call_leg *_leg)
 		return;
 	}
 
-	sdp = sdp_create_file(leg, other);
+	sdp = sdp_create_file(leg, other, sdp_sendrecv);
 
 	leg->state = SIP_CC_CONNECTED;
 	nua_respond(leg->nua_handle, SIP_200_OK,
@@ -425,7 +426,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				called_num,
 				agent->app->sip.remote_addr,
 				agent->app->sip.remote_port);
-	char *sdp = sdp_create_file(leg, other);
+	char *sdp = sdp_create_file(leg, other, sdp_sendrecv);
 
 	leg->state = SIP_CC_INITIAL;
 	leg->dir = SIP_DIR_MT;
