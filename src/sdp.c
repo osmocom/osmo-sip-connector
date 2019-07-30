@@ -33,6 +33,45 @@
 #include <string.h>
 
 /*
+ * Check if the media mode attribute exists in SDP, in this
+ * case update the passed pointer with the media mode
+ */
+bool sdp_get_sdp_mode(const sip_t *sip, sdp_mode_t *mode) {
+
+	const char *sdp_data;
+	sdp_parser_t *parser;
+	sdp_session_t *sdp;
+
+	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
+		LOGP(DSIP, LOGL_ERROR, "No SDP file\n");
+		return false;
+	}
+
+	sdp_data = sip->sip_payload->pl_data;
+	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), sdp_f_mode_0000);
+	if (!parser) {
+		LOGP(DSIP, LOGL_ERROR, "Failed to parse SDP\n");
+		return false;
+	}
+
+	sdp = sdp_session(parser);
+	if (!sdp) {
+		LOGP(DSIP, LOGL_ERROR, "No sdp session\n");
+		sdp_parser_free(parser);
+		return false;
+	}
+
+	if (!sdp->sdp_media || !sdp->sdp_media->m_mode) {
+		sdp_parser_free(parser);
+		return sdp_sendrecv;
+	}
+
+	sdp_parser_free(parser);
+	*mode = sdp->sdp_media->m_mode;
+	return true;
+}
+
+/*
  * We want to decide on the audio codec later but we need to see
  * if it is even including some of the supported ones.
  */

@@ -198,6 +198,23 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	return true;
 }
 
+static void update_rtp(struct call_leg *_leg) {
+
+	struct mncc_call_leg *leg;
+
+	LOGP(DMNCC, LOGL_DEBUG, "UPDATE RTP with LEG Type (%u)\n", _leg->type);
+
+	if (_leg->type == CALL_TYPE_MNCC) {
+		leg = (struct mncc_call_leg *) _leg;
+		struct call_leg *other = call_leg_other(&leg->base);
+		send_rtp_connect(leg, other);
+	} else {
+		leg = (struct mncc_call_leg *) call_leg_other(_leg);
+		send_rtp_connect(leg, _leg);
+	}
+}
+
+
 /* CONNECT call-back for MNCC call leg */
 static void mncc_call_leg_connect(struct call_leg *_leg)
 {
@@ -482,6 +499,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	leg->base.connect_call = mncc_call_leg_connect;
 	leg->base.ring_call = mncc_call_leg_ring;
 	leg->base.release_call = mncc_call_leg_release;
+	leg->base.update_rtp = update_rtp;
 	leg->callref = data->callref;
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
@@ -788,6 +806,7 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 	leg->base.ring_call = mncc_call_leg_ring;
 	leg->base.release_call = mncc_call_leg_release;
 	leg->base.call = call;
+	leg->base.update_rtp = update_rtp;
 
 	leg->callref = call->id;
 

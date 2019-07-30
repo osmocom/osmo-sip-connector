@@ -41,6 +41,27 @@ static void sip_ring_call(struct call_leg *_leg);
 static void sip_connect_call(struct call_leg *_leg);
 static void sip_dtmf_call(struct call_leg *_leg, int keypad);
 
+/* Find a SIP Call leg by given nua_handle */
+static struct sip_call_leg *sip_find_leg(nua_handle_t *nh)
+{
+	struct call *call;
+
+	llist_for_each_entry(call, &g_call_list, entry) {
+		if (call->initial && call->initial->type == CALL_TYPE_SIP) {
+			struct sip_call_leg *leg = (struct sip_call_leg *) call->initial;
+			if (leg->nua_handle == nh)
+				return leg;
+		}
+		if (call->remote && call->remote->type == CALL_TYPE_SIP) {
+			struct sip_call_leg *leg = (struct sip_call_leg *) call->remote;
+			if (leg->nua_handle == nh)
+				return leg;
+		}
+	}
+
+	return NULL;
+}
+
 static void call_progress(struct sip_call_leg *leg, const sip_t *sip, int status)
 {
 	struct call_leg *other = call_leg_other(&leg->base);
@@ -149,6 +170,57 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 			talloc_strdup(leg, to));
 }
 
+static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, const sip_t *sip) {
+
+	char *sdp;
+	sdp_mode_t mode = sdp_sendrecv;
+
+	LOGP(DSIP, LOGL_NOTICE, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
+
+	struct call_leg *other = call_leg_other(&leg->base);
+	if (!sdp_get_sdp_mode(sip, &mode)) {
+		/* re-INVITE with no SDP.
+		 * We should respond with SDP reflecting current session
+		 */
+		sdp = sdp_create_file(leg, other, sdp_sendrecv);
+		nua_respond(nh, SIP_200_OK,
+			    NUTAG_MEDIA_ENABLE(0),
+			    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+			    SIPTAG_PAYLOAD_STR(sdp),
+			    TAG_END());
+		talloc_free(sdp);
+		return;
+	}
+
+	if (mode == sdp_sendonly) {
+		/* SIP side places call on HOLD */
+		sdp = sdp_create_file(leg, other, sdp_recvonly);
+		/* TODO: Tell core network to stop sending RTP ? */
+	} else {
+		/* SIP re-INVITE may want to change media, IP, port */
+		if (!sdp_extract_sdp(leg, sip, true)) {
+			LOGP(DSIP, LOGL_ERROR, "leg(%p) no audio, releasing\n", leg);
+			nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
+			nua_handle_destroy(nh);
+			call_leg_release(&leg->base);
+			return;
+		}
+		if (other->update_rtp)
+			other->update_rtp(leg->base.call->remote);
+
+		sdp = sdp_create_file(leg, other, sdp_sendrecv);
+	}
+
+	LOGP(DSIP, LOGL_DEBUG, "Sending 200 response to re-INVITE for mode(%u)\n", mode);
+	nua_respond(nh, SIP_200_OK,
+		    NUTAG_MEDIA_ENABLE(0),
+		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+		    SIPTAG_PAYLOAD_STR(sdp),
+		    TAG_END());
+	talloc_free(sdp);
+	return;
+}
+
 /* Sofia SIP definitions come with error code numbers and strings, this
  * map allows us to reuse the existing definitions.
  * The map is in priority order. The first matching entry found
@@ -235,8 +307,13 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 
 		if (status == 180 || status == 183)
 			call_progress(leg, sip, status);
-		else if (status == 200)
-			call_connect(leg, sip);
+		else if (status == 200) {
+			struct sip_call_leg *leg = sip_find_leg(nh);
+			if (leg)
+				nua_ack(leg->nua_handle, TAG_END());
+			else
+				call_connect(leg, sip);
+		}
 		else if (status >= 300) {
 			struct call_leg *other = call_leg_other(&leg->base);
 
@@ -250,6 +327,14 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 				other->cause = status2cause(status);
 				other->release_call(other);
 			}
+		}
+	} else if (event == nua_i_ack) {
+		/* SDP comes back to us in 200 ACK after we
+		 * respond to the re-INVITE query. */
+		if (sip->sip_payload && sip->sip_payload->pl_data) {
+			struct sip_call_leg *leg = sip_find_leg(nh);
+			if (leg)
+				sip_handle_reinvite(leg, nh, sip);
 		}
 	} else if (event == nua_r_bye || event == nua_r_cancel) {
 		/* our bye or hang up is answered */
@@ -270,10 +355,15 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		if (other)
 			other->release_call(other);
 	} else if (event == nua_i_invite) {
-		/* new incoming leg */
+		/* new incoming leg or re-INVITE */
 
-		if (status == 100)
-			new_call((struct sip_agent *) magic, nh, sip);
+		if (status == 100) {
+			struct sip_call_leg *leg = sip_find_leg(nh);
+			if (leg)
+				sip_handle_reinvite(leg, nh, sip);
+			else
+				new_call((struct sip_agent *) magic, nh, sip);
+		}
 	} else if (event == nua_i_cancel) {
 		struct sip_call_leg *leg;
 		struct call_leg *other;

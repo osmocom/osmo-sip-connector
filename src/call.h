@@ -74,6 +74,9 @@ struct call_leg {
 	 * A DTMF key was entered. Forward it.
 	 */
 	void (*dtmf)(struct call_leg *, int keypad);
+
+	void (*update_rtp)(struct call_leg *);
+
 };
 
 enum sip_cc_state {
