@@ -40,6 +40,7 @@ const struct value_string mncc_state_vals[] = {
 	{ MNCC_CC_INITIAL,		"INITIAL"    },
 	{ MNCC_CC_PROCEEDING,		"PROCEEDING" },
 	{ MNCC_CC_CONNECTED,		"CONNECTED"  },
+	{ MNCC_CC_HOLD,			"ON HOLD"    },
 	{ 0, NULL },
 };
 
@@ -53,6 +54,7 @@ const struct value_string sip_state_vals[] = {
 	{ SIP_CC_INITIAL,		"INITIAL"   },
 	{ SIP_CC_DLG_CNFD,		"CONFIRMED" },
 	{ SIP_CC_CONNECTED,		"CONNECTED" },
+	{ SIP_CC_HOLD,			"ON HOLD"   },
 	{ 0, NULL },
 };
 

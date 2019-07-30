@@ -75,6 +75,17 @@ struct call_leg {
 	 */
 	void (*dtmf)(struct call_leg *, int keypad);
 
+	/**
+	 * Call HOLD requested
+	 */
+	void (*hold_call)(struct call_leg *);
+
+	/**
+	 * Call HOLD ended
+	 */
+	void (*retrieve_call)(struct call_leg *);
+
+
 	void (*update_rtp)(struct call_leg *);
 
 };
@@ -83,6 +94,7 @@ enum sip_cc_state {
 	SIP_CC_INITIAL,
 	SIP_CC_DLG_CNFD,
 	SIP_CC_CONNECTED,
+	SIP_CC_HOLD,
 };
 
 enum sip_dir {
@@ -113,6 +125,7 @@ enum mncc_cc_state {
 	MNCC_CC_INITIAL,
 	MNCC_CC_PROCEEDING, /* skip delivered state */
 	MNCC_CC_CONNECTED,
+	MNCC_CC_HOLD,
 };
 
 enum mncc_dir {

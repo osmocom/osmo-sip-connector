@@ -40,6 +40,9 @@ static void sip_release_call(struct call_leg *_leg);
 static void sip_ring_call(struct call_leg *_leg);
 static void sip_connect_call(struct call_leg *_leg);
 static void sip_dtmf_call(struct call_leg *_leg, int keypad);
+static void sip_hold_call(struct call_leg *_leg);
+static void sip_retrieve_call(struct call_leg *_leg);
+
 
 /* Find a SIP Call leg by given nua_handle */
 static struct sip_call_leg *sip_find_leg(nua_handle_t *nh)
@@ -160,6 +163,8 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	leg->base.ring_call = sip_ring_call;
 	leg->base.connect_call = sip_connect_call;
 	leg->base.dtmf = sip_dtmf_call;
+	leg->base.hold_call = sip_hold_call;
+	leg->base.retrieve_call = sip_retrieve_call;
 	leg->agent = agent;
 	leg->nua_handle = nh;
 	nua_handle_bind(nh, leg);
@@ -441,6 +446,7 @@ static void sip_release_call(struct call_leg *_leg)
 		}
 		break;
 	case SIP_CC_CONNECTED:
+	case SIP_CC_HOLD:
 		LOGP(DSIP, LOGL_NOTICE, "Ending leg(%p) in con\n", leg);
 		nua_bye(leg->nua_handle, TAG_END());
 		break;
@@ -501,6 +507,40 @@ static void sip_dtmf_call(struct call_leg *_leg, int keypad)
 		SIPTAG_CONTENT_TYPE_STR("application/dtmf-relay"),
 		SIPTAG_PAYLOAD_STR(buf), TAG_END());
 	talloc_free(buf);
+}
+
+static void sip_hold_call(struct call_leg *_leg)
+{
+	struct sip_call_leg *leg;
+	struct call_leg *other_leg;
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+	other_leg = call_leg_other(&leg->base);
+	char *sdp = sdp_create_file(leg, other_leg, sdp_sendonly);
+	nua_invite(leg->nua_handle,
+		    NUTAG_MEDIA_ENABLE(0),
+		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+		    SIPTAG_PAYLOAD_STR(sdp),
+		    TAG_END());
+	talloc_free(sdp);
+	leg->state = SIP_CC_HOLD;
+}
+
+static void sip_retrieve_call(struct call_leg *_leg)
+{
+	struct sip_call_leg *leg;
+	struct call_leg *other_leg;
+	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
+	leg = (struct sip_call_leg *) _leg;
+	other_leg = call_leg_other(&leg->base);
+	char *sdp = sdp_create_file(leg, other_leg, sdp_sendrecv);
+	nua_invite(leg->nua_handle,
+		    NUTAG_MEDIA_ENABLE(0),
+		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+		    SIPTAG_PAYLOAD_STR(sdp),
+		    TAG_END());
+	talloc_free(sdp);
+	leg->state = SIP_CC_CONNECTED;
 }
 
 static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
