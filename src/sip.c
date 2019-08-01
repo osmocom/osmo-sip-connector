@@ -224,9 +224,9 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		LOGP(DSIP, LOGL_NOTICE, "Media IP:port in re-INVITE: (%s:%u)\n", inet_ntoa(net), leg->base.port);
 		if (ip != leg->base.ip || port != leg->base.port) {
 			LOGP(DSIP, LOGL_NOTICE, "re-INVITE changes media connection.\n");
+			if (other->update_rtp)
+				other->update_rtp(leg->base.call->remote);
 		}
-		if (other->update_rtp)
-			other->update_rtp(leg->base.call->remote);
 		sdp = sdp_create_file(leg, other, sdp_sendrecv);
 	}
 
