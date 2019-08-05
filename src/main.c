@@ -133,8 +133,8 @@ int main(int argc, char **argv)
 	osmo_stats_init(tall_mncc_ctx);
 
 	mncc_sip_vty_init();
-	logging_vty_add_cmds(&mncc_sip_info);
-	osmo_stats_vty_add_cmds(&mncc_sip_info);
+	logging_vty_add_cmds();
+	osmo_stats_vty_add_cmds();
 
 
 	/* parsing and setup */
