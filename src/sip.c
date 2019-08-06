@@ -110,6 +110,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	struct call *call;
 	struct sip_call_leg *leg;
 	const char *from = NULL, *to = NULL;
+	char ip_addr[INET_ADDRSTRLEN];
 
 	LOGP(DSIP, LOGL_DEBUG, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
 
@@ -159,8 +160,9 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		return;
 	}
 	struct in_addr net = { .s_addr = leg->base.ip };
+	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	LOGP(DSIP, LOGL_DEBUG, "SDP Extracted: IP=(%s) PORT=(%u) PAYLOAD=(%u).\n",
-		               inet_ntoa(net),
+		               ip_addr,
 		               leg->base.port,
 		               leg->base.payload_type);
 
@@ -186,6 +188,7 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 	sdp_mode_t mode = sdp_sendrecv;
 	uint32_t ip = leg->base.ip;
 	uint16_t port = leg->base.port;
+	char ip_addr[INET_ADDRSTRLEN];
 
 	LOGP(DSIP, LOGL_NOTICE, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
@@ -205,7 +208,8 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 	}
 
 	struct in_addr net = { .s_addr = leg->base.ip };
-	LOGP(DSIP, LOGL_NOTICE, "pre re-INVITE have IP:port (%s:%u)\n", inet_ntoa(net), leg->base.port);
+	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
+	LOGP(DSIP, LOGL_NOTICE, "pre re-INVITE have IP:port (%s:%u)\n", ip_addr, leg->base.port);
 
 	if (mode == sdp_sendonly) {
 		/* SIP side places call on HOLD */
@@ -221,7 +225,8 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 			return;
 		}
 		struct in_addr net = { .s_addr = leg->base.ip };
-		LOGP(DSIP, LOGL_NOTICE, "Media IP:port in re-INVITE: (%s:%u)\n", inet_ntoa(net), leg->base.port);
+		inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
+		LOGP(DSIP, LOGL_NOTICE, "Media IP:port in re-INVITE: (%s:%u)\n", ip_addr, leg->base.port);
 		if (ip != leg->base.ip || port != leg->base.port) {
 			LOGP(DSIP, LOGL_NOTICE, "re-INVITE changes media connection.\n");
 			if (other->update_rtp)

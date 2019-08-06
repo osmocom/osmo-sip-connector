@@ -207,7 +207,9 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 	struct in_addr net = { .s_addr = other->ip };
 	char *fmtp_str = NULL, *sdp;
 	char *mode_attribute;
+	char ip_addr[INET_ADDRSTRLEN];
 
+	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	leg->wanted_codec = app_media_name(other->payload_msg_type);
 
 	if (strcmp(leg->wanted_codec, "AMR") == 0)
@@ -241,7 +243,7 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 				"%s"
 				"a=rtpmap:%d %s/8000\r\n"
 				"%s",
-				inet_ntoa(net), inet_ntoa(net), /* never use diff. addr! */
+				ip_addr, ip_addr, /* never use diff. addr! */
 				other->port, other->payload_type,
 				fmtp_str ? fmtp_str : "",
 				other->payload_type,

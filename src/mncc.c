@@ -174,6 +174,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
 	int rc;
+	char ip_addr[INET_ADDRSTRLEN];
 
 	/*
 	 * Send RTP CONNECT and we handle the general failure of it by
@@ -189,7 +190,8 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	 * payload_type should be different..
 	 */
 	struct in_addr net = { .s_addr = other->ip };
-	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n", inet_ntoa(net), mncc.port);
+	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
+	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n", ip_addr, mncc.port);
 	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
 	if (rc != sizeof(mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
@@ -395,6 +397,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 {
 	const struct gsm_mncc_rtp *rtp;
 	struct mncc_call_leg *leg;
+	char ip_addr[INET_ADDRSTRLEN];
 
 	if (rc < sizeof(*rtp)) {
 		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %zu\n",
@@ -417,9 +420,10 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 
 	/* TODO.. now we can continue with the call */
 	struct in_addr net = { .s_addr = leg->base.ip };
+	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	LOGP(DMNCC, LOGL_DEBUG,
 		"RTP cnt leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
-		leg->callref, inet_ntoa(net), leg->base.port,
+		leg->callref, ip_addr, leg->base.port,
 		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	continue_call(leg);
