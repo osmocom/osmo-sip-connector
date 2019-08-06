@@ -332,11 +332,13 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		if (status == 180 || status == 183)
 			call_progress(leg, sip, status);
 		else if (status == 200) {
-			struct sip_call_leg *leg = sip_find_leg(nh);
-			if (leg)
+			if (leg->state == SIP_CC_CONNECTED || leg->state == SIP_CC_HOLD) {
+				/* This 200 is a response to our re-INVITE on
+				 * a connected call. We just need to ACK it. */
 				nua_ack(leg->nua_handle, TAG_END());
-			else
+			} else {
 				call_connect(leg, sip);
+			}
 		}
 		else if (status >= 300) {
 			struct call_leg *other = call_leg_other(&leg->base);
