@@ -614,6 +614,8 @@ int sip_create_remote_leg(struct sip_agent *agent, struct call *call)
 	leg->base.call = call;
 	leg->base.release_call = sip_release_call;
 	leg->base.dtmf = sip_dtmf_call;
+	leg->base.hold_call = sip_hold_call;
+	leg->base.retrieve_call = sip_retrieve_call;
 	leg->agent = agent;
 
 	leg->nua_handle = nua_handle(agent->nua, leg, TAG_END());
