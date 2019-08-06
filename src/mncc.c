@@ -297,6 +297,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 		break;
 	case MNCC_CC_PROCEEDING:
 	case MNCC_CC_CONNECTED:
+	case MNCC_CC_HOLD:
 		LOGP(DMNCC, LOGL_DEBUG,
 			"Releasing call in non-initial leg(%u) cause(%s)\n", leg->callref, gsm48_cc_cause_name(leg->base.cause));
 		leg->base.in_release = true;
