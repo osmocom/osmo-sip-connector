@@ -129,7 +129,7 @@ DEFUN(cfg_sip_local_addr, cfg_sip_local_addr_cmd,
 
 DEFUN(cfg_sip_remote_addr, cfg_sip_remote_addr_cmd,
 	"remote ADDR <1-65534>",
-	"Remore information\nSIP hostname\nport\n")
+	"Remote information\nSIP hostname\nport\n")
 {
 	talloc_free((char *) g_app.sip.remote_addr);
 	g_app.sip.remote_addr = talloc_strdup(tall_mncc_ctx, argv[0]);

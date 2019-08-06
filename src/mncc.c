@@ -50,7 +50,7 @@ static void cmd_timeout(void *data)
 	struct mncc_call_leg *leg = data;
 	struct call_leg *other_leg;
 
-	LOGP(DMNCC, LOGL_ERROR, "cmd(0x%x) never arrived for leg(%u)\n",
+	LOGP(DMNCC, LOGL_ERROR, "command(0x%x) never arrived for leg(%u)\n",
 		leg->rsp_wanted, leg->callref);
 
 	other_leg = call_leg_other(&leg->base);
@@ -72,7 +72,7 @@ static void start_cmd_timer(struct mncc_call_leg *leg, uint32_t expected_next)
 static void stop_cmd_timer(struct mncc_call_leg *leg, uint32_t got_res)
 {
 	if (leg->rsp_wanted != got_res) {
-		LOGP(DMNCC, LOGL_ERROR, "Wanted rsp(%s) but got(%s) for leg(%u)\n",
+		LOGP(DMNCC, LOGL_ERROR, "Wanted response(%s) but got(%s) for leg(%u)\n",
 			osmo_mncc_name(leg->rsp_wanted), osmo_mncc_name(got_res), leg->callref);
 		return;
 	}
@@ -141,7 +141,7 @@ static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc, uint
 	rc = write(conn->fd.fd, mncc, sizeof(*mncc));
 	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(mncc->msg_type));
 	if (rc != sizeof(*mncc)) {
-		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", callref);
 		close_connection(conn);
 	}
 }
@@ -164,12 +164,12 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 
 	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
 	if (rc != sizeof(mncc)) {
-		LOGP(DMNCC, LOGL_ERROR, "Failed to send message call(%u)\n", callref);
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", callref);
 		close_connection(conn);
 	}
 }
 
-/* Send a MNCC_RTP_CONNET to the MSC for the given call legs */
+/* Send a MNCC_RTP_CONNECT to the MSC for the given call legs */
 static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
@@ -194,7 +194,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n", ip_addr, mncc.port);
 	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
 	if (rc != sizeof(mncc)) {
-		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n",
 			leg->callref);
 		close_connection(leg->conn);
 		return false;
@@ -206,7 +206,7 @@ static void update_rtp(struct call_leg *_leg) {
 
 	struct mncc_call_leg *leg;
 
-	LOGP(DMNCC, LOGL_DEBUG, "UPDATE RTP with LEG Type (%u)\n", _leg->type);
+	LOGP(DMNCC, LOGL_DEBUG, "UPDATE RTP for LEG Type (%u)\n", _leg->type);
 
 	if (_leg->type == CALL_TYPE_MNCC) {
 		leg = (struct mncc_call_leg *) _leg;
@@ -251,7 +251,7 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 	mncc_fill_header(&out_mncc, MNCC_ALERT_REQ, leg->callref);
 	/* GSM 04.08 10.5.4.21 */
 	out_mncc.fields |= MNCC_F_PROGRESS;
-	out_mncc.progress.coding = GSM48_CAUSE_CODING_GSM; /* Standard defined for the GSMßPLMNS */
+	out_mncc.progress.coding = GSM48_CAUSE_CODING_GSM; /* Standard defined for the GSM PLMNS */
 	out_mncc.progress.location = GSM48_CAUSE_LOC_PRN_S_LU; /* Private network serving the local user */
 	out_mncc.progress.descr = GSM48_PROGR_IN_BAND_AVAIL; /* In-band information or appropriate pattern now available */
 
@@ -277,7 +277,7 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 	/* drop it directly, if not connected */
 	if (leg->conn->state != MNCC_READY) {
 		LOGP(DMNCC, LOGL_DEBUG,
-			"MNCC not connected releasing leg leg(%u)\n", leg->callref);
+			"MNCC not connected releasing leg(%u)\n", leg->callref);
 		return mncc_leg_release(leg);
 	}
 
@@ -422,7 +422,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	struct in_addr net = { .s_addr = leg->base.ip };
 	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	LOGP(DMNCC, LOGL_DEBUG,
-		"RTP cnt leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
+		"RTP continue leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
 		leg->callref, ip_addr, leg->base.port,
 		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
@@ -658,7 +658,7 @@ static void check_cnf_ind(struct mncc_connection *conn, const char *buf, int rc)
 		return;
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"leg(%u) confirmend. creating RTP socket.\n",
+		"leg(%u) confirmed. creating RTP socket.\n",
 		leg->callref);
 
 	start_cmd_timer(leg, MNCC_RTP_CREATE);
@@ -700,7 +700,7 @@ static void check_hold_ind(struct mncc_connection *conn, const char *buf, int rc
 		return;
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"leg(%u) is req hold.\n", leg->callref);
+		"leg(%u) is requesting hold.\n", leg->callref);
 	other_leg = call_leg_other(&leg->base);
 	other_leg->hold_call(other_leg);
 	mncc_send(leg->conn, MNCC_HOLD_CNF, leg->callref);
@@ -718,7 +718,7 @@ static void check_retrieve_ind(struct mncc_connection *conn, const char *buf, in
 		return;
 
 	LOGP(DMNCC, LOGL_DEBUG,
-		"leg(%u) is req unhold.\n", leg->callref);
+		"leg(%u) is requesting unhold.\n", leg->callref);
 	other_leg = call_leg_other(&leg->base);
 	other_leg->retrieve_call(other_leg);
 	mncc_send(leg->conn, MNCC_RETRIEVE_CNF, leg->callref);

@@ -169,6 +169,6 @@ const char *call_leg_state(struct call_leg *leg)
 		mncc = (struct mncc_call_leg *) leg;
 		return get_value_string(mncc_state_vals, mncc->state);
 	default:
-		return "unknown call type";
+		return "Unknown call type";
 	}
 }

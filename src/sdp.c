@@ -243,7 +243,7 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 				"%s"
 				"a=rtpmap:%d %s/8000\r\n"
 				"%s",
-				ip_addr, ip_addr, /* never use diff. addr! */
+				ip_addr, ip_addr,
 				other->port, other->payload_type,
 				fmtp_str ? fmtp_str : "",
 				other->payload_type,

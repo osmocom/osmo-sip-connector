@@ -150,7 +150,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	 * not this place. It starts with the TCH/F vs. TCH/H selection based
 	 * on the offered codecs, and then RTP_CREATE should have it. So both
 	 * are GSM related... and do not belong here. Just pick the first codec
-	 * so the IP addresss port and payload type is set.
+	 * so the IP address, port and payload type is set.
 	 */
 	if (!sdp_extract_sdp(leg, sip, true)) {
 		LOGP(DSIP, LOGL_ERROR, "leg(%p) no audio, releasing\n", leg);
@@ -395,7 +395,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		struct sip_call_leg *leg;
 		struct call_leg *other;
 
-		LOGP(DSIP, LOGL_ERROR, "Canceled on leg(%p)\n", hmagic);
+		LOGP(DSIP, LOGL_ERROR, "Cancelled on leg(%p)\n", hmagic);
 
 		leg = (struct sip_call_leg *) hmagic;
 		other = call_leg_other(&leg->base);
@@ -453,12 +453,12 @@ static void sip_release_call(struct call_leg *_leg)
 
 	switch (leg->state) {
 	case SIP_CC_INITIAL:
-		LOGP(DSIP, LOGL_NOTICE, "Canceling leg(%p) in int state\n", leg);
+		LOGP(DSIP, LOGL_NOTICE, "Cancelling leg(%p) in initial state\n", leg);
 		nua_handle_destroy(leg->nua_handle);
 		call_leg_release(&leg->base);
 		break;
 	case SIP_CC_DLG_CNFD:
-		LOGP(DSIP, LOGL_NOTICE, "Canceling leg(%p) in cnfd state\n", leg);
+		LOGP(DSIP, LOGL_NOTICE, "Cancelling leg(%p) in confirmed state\n", leg);
 		if (leg->dir == SIP_DIR_MT)
 			nua_cancel(leg->nua_handle, TAG_END());
 		else {
@@ -471,7 +471,7 @@ static void sip_release_call(struct call_leg *_leg)
 		break;
 	case SIP_CC_CONNECTED:
 	case SIP_CC_HOLD:
-		LOGP(DSIP, LOGL_NOTICE, "Ending leg(%p) in con\n", leg);
+		LOGP(DSIP, LOGL_NOTICE, "Ending leg(%p) in connected state.\n", leg);
 		nua_bye(leg->nua_handle, TAG_END());
 		break;
 	}
