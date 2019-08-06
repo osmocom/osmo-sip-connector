@@ -181,7 +181,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	 */
 	mncc.msg_type = MNCC_RTP_CONNECT;
 	mncc.callref = leg->callref;
-	mncc.ip = htonl(other->ip);
+	mncc.ip = ntohl(other->ip);
 	mncc.port = other->port;
 	mncc.payload_type = other->payload_type;
 	/*
@@ -410,13 +410,13 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	}
 
 	/* extract information about where the RTP is */
-	leg->base.ip = rtp->ip;
+	leg->base.ip = htonl(rtp->ip);
 	leg->base.port = rtp->port;
 	leg->base.payload_type = rtp->payload_type;
 	leg->base.payload_msg_type = rtp->payload_msg_type;
 
 	/* TODO.. now we can continue with the call */
-	struct in_addr net = { .s_addr = htonl(leg->base.ip) };
+	struct in_addr net = { .s_addr = leg->base.ip };
 	LOGP(DMNCC, LOGL_DEBUG,
 		"RTP cnt leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
 		leg->callref, inet_ntoa(net), leg->base.port,
