@@ -422,7 +422,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	/* TODO.. now we can continue with the call */
 	struct in_addr net = { .s_addr = leg->base.ip };
 	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DMNCC, LOGL_DEBUG,
+	LOGP(DMNCC, LOGL_INFO,
 		"RTP continue leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
 		leg->callref, ip_addr, leg->base.port,
 		leg->base.payload_type, leg->base.payload_msg_type);
@@ -515,7 +515,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
 
-	LOGP(DMNCC, LOGL_DEBUG,
+	LOGP(DMNCC, LOGL_INFO,
 		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",
 		call->id, leg->callref, data->imsi);
 
@@ -624,7 +624,7 @@ static void check_stp_cmpl_ind(struct mncc_connection *conn, const char *buf, in
 	if (!leg)
 		return;
 
-	LOGP(DMNCC, LOGL_NOTICE, "leg(%u) is now connected.\n", leg->callref);
+	LOGP(DMNCC, LOGL_INFO, "leg(%u) is now connected.\n", leg->callref);
 	stop_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
 	leg->state = MNCC_CC_CONNECTED;
 }

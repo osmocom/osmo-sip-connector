@@ -76,7 +76,7 @@ static void call_progress(struct sip_call_leg *leg, const sip_t *sip, int status
 	if (status == 183)
 		sdp_extract_sdp(leg, sip, false);
 
-	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now ringing.\n", leg);
+	LOGP(DSIP, LOGL_INFO, "leg(%p) is now progressing.\n", leg);
 	other->ring_call(other);
 }
 
@@ -98,7 +98,7 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 		return;
 	}
 
-	LOGP(DSIP, LOGL_NOTICE, "leg(%p) is now connected(%s).\n", leg, sip->sip_call_id->i_id);
+	LOGP(DSIP, LOGL_INFO, "leg(%p) is now connected(%s).\n", leg, sip->sip_call_id->i_id);
 	leg->state = SIP_CC_CONNECTED;
 	other->connect_call(other);
 	nua_ack(leg->nua_handle, TAG_END());
@@ -112,7 +112,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	const char *from = NULL, *to = NULL;
 	char ip_addr[INET_ADDRSTRLEN];
 
-	LOGP(DSIP, LOGL_DEBUG, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
+	LOGP(DSIP, LOGL_INFO, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
 
 	if (!sdp_screen_sdp(sip)) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
@@ -161,7 +161,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	}
 	struct in_addr net = { .s_addr = leg->base.ip };
 	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DSIP, LOGL_DEBUG, "SDP Extracted: IP=(%s) PORT=(%u) PAYLOAD=(%u).\n",
+	LOGP(DSIP, LOGL_INFO, "SDP Extracted: IP=(%s) PORT=(%u) PAYLOAD=(%u).\n",
 		               ip_addr,
 		               leg->base.port,
 		               leg->base.payload_type);
@@ -190,7 +190,7 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 	uint16_t port = leg->base.port;
 	char ip_addr[INET_ADDRSTRLEN];
 
-	LOGP(DSIP, LOGL_NOTICE, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
+	LOGP(DSIP, LOGL_INFO, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
 	struct call_leg *other = call_leg_other(&leg->base);
 	if (!sdp_get_sdp_mode(sip, &mode)) {
@@ -209,7 +209,7 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 
 	struct in_addr net = { .s_addr = leg->base.ip };
 	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DSIP, LOGL_NOTICE, "pre re-INVITE have IP:port (%s:%u)\n", ip_addr, leg->base.port);
+	LOGP(DSIP, LOGL_DEBUG, "pre re-INVITE have IP:port (%s:%u)\n", ip_addr, leg->base.port);
 
 	if (mode == sdp_sendonly) {
 		/* SIP side places call on HOLD */
@@ -226,9 +226,9 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		}
 		struct in_addr net = { .s_addr = leg->base.ip };
 		inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-		LOGP(DSIP, LOGL_NOTICE, "Media IP:port in re-INVITE: (%s:%u)\n", ip_addr, leg->base.port);
+		LOGP(DSIP, LOGL_DEBUG, "Media IP:port in re-INVITE: (%s:%u)\n", ip_addr, leg->base.port);
 		if (ip != leg->base.ip || port != leg->base.port) {
-			LOGP(DSIP, LOGL_NOTICE, "re-INVITE changes media connection.\n");
+			LOGP(DSIP, LOGL_INFO, "re-INVITE changes media connection.\n");
 			if (other->update_rtp)
 				other->update_rtp(leg->base.call->remote);
 		}
@@ -343,13 +343,13 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		else if (status >= 300) {
 			struct call_leg *other = call_leg_other(&leg->base);
 
-			LOGP(DSIP, LOGL_ERROR, "leg(%p) unknown SIP status(%d), releasing.\n", leg, status);
+			LOGP(DSIP, LOGL_INFO, "INVITE got status(%d), releasing leg(%p).\n", status, leg);
 			nua_cancel(leg->nua_handle, TAG_END());
 			nua_handle_destroy(leg->nua_handle);
 			call_leg_release(&leg->base);
 
 			if (other) {
-				LOGP(DSIP, LOGL_DEBUG, "Releasing other leg (%p) with status(%d)\n", other, status);
+				LOGP(DSIP, LOGL_INFO, "Releasing MNCC leg (%p) with status(%d)\n", other, status);
 				other->cause = status2cause(status);
 				other->release_call(other);
 			}
@@ -365,7 +365,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 	} else if (event == nua_r_bye || event == nua_r_cancel) {
 		/* our bye or hang up is answered */
 		struct sip_call_leg *leg = (struct sip_call_leg *) hmagic;
-		LOGP(DSIP, LOGL_NOTICE, "leg(%p) got resp to %s\n",
+		LOGP(DSIP, LOGL_INFO, "leg(%p) got resp to %s\n",
 			leg, event == nua_r_bye ? "bye" : "cancel");
 		nua_handle_destroy(leg->nua_handle);
 		call_leg_release(&leg->base);
@@ -374,7 +374,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		struct sip_call_leg *leg = (struct sip_call_leg *) hmagic;
 		struct call_leg *other = call_leg_other(&leg->base);
 
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) got bye, releasing.\n", leg);
+		LOGP(DSIP, LOGL_INFO, "leg(%p) got bye, releasing.\n", leg);
 		nua_handle_destroy(leg->nua_handle);
 		call_leg_release(&leg->base);
 
@@ -382,7 +382,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 			other->release_call(other);
 	} else if (event == nua_i_invite) {
 		/* new incoming leg or re-INVITE */
-		LOGP(DSIP, LOGL_NOTICE, "Processing INVITE Call-ID: %s\n", sip->sip_call_id->i_id);
+		LOGP(DSIP, LOGL_INFO, "Processing INVITE Call-ID: %s\n", sip->sip_call_id->i_id);
 
 		if (status == 100) {
 			struct sip_call_leg *leg = sip_find_leg(nh);
@@ -395,7 +395,7 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		struct sip_call_leg *leg;
 		struct call_leg *other;
 
-		LOGP(DSIP, LOGL_ERROR, "Cancelled on leg(%p)\n", hmagic);
+		LOGP(DSIP, LOGL_INFO, "Cancelled on leg(%p)\n", hmagic);
 
 		leg = (struct sip_call_leg *) hmagic;
 		other = call_leg_other(&leg->base);
@@ -447,18 +447,18 @@ static void sip_release_call(struct call_leg *_leg)
 	 * to help us here.
 	 */
 
-	LOGP(DSIP, LOGL_DEBUG, "%s(): Release with MNCC cause(%s)\n", __func__, gsm48_cc_cause_name(_leg->cause));
+	LOGP(DSIP, LOGL_INFO, "%s(): Release with MNCC cause(%s)\n", __func__, gsm48_cc_cause_name(_leg->cause));
 	cause2status(_leg->cause, &sip_cause, &sip_phrase, &reason_text);
 	snprintf(reason, sizeof reason, "Q.850;cause=%u;text=\"%s\"", _leg->cause, reason_text);
 
 	switch (leg->state) {
 	case SIP_CC_INITIAL:
-		LOGP(DSIP, LOGL_NOTICE, "Cancelling leg(%p) in initial state\n", leg);
+		LOGP(DSIP, LOGL_INFO, "Cancelling leg(%p) in initial state\n", leg);
 		nua_handle_destroy(leg->nua_handle);
 		call_leg_release(&leg->base);
 		break;
 	case SIP_CC_DLG_CNFD:
-		LOGP(DSIP, LOGL_NOTICE, "Cancelling leg(%p) in confirmed state\n", leg);
+		LOGP(DSIP, LOGL_INFO, "Cancelling leg(%p) in confirmed state\n", leg);
 		if (leg->dir == SIP_DIR_MT)
 			nua_cancel(leg->nua_handle, TAG_END());
 		else {
