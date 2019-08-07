@@ -193,6 +193,13 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 	LOGP(DSIP, LOGL_INFO, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
 	struct call_leg *other = call_leg_other(&leg->base);
+
+	if (!other) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%p) other leg gone!\n", leg);
+		sip_release_call(&leg->base);
+		return;
+	}
+
 	if (!sdp_get_sdp_mode(sip, &mode)) {
 		/* re-INVITE with no SDP.
 		 * We should respond with SDP reflecting current session
@@ -540,6 +547,11 @@ static void sip_hold_call(struct call_leg *_leg)
 	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
 	leg = (struct sip_call_leg *) _leg;
 	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%p) other leg gone!\n", leg);
+		sip_release_call(&leg->base);
+		return;
+	}
 	char *sdp = sdp_create_file(leg, other_leg, sdp_sendonly);
 	nua_invite(leg->nua_handle,
 		    NUTAG_MEDIA_ENABLE(0),
@@ -557,6 +569,11 @@ static void sip_retrieve_call(struct call_leg *_leg)
 	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
 	leg = (struct sip_call_leg *) _leg;
 	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%p) other leg gone!\n", leg);
+		sip_release_call(&leg->base);
+		return;
+	}
 	char *sdp = sdp_create_file(leg, other_leg, sdp_sendrecv);
 	nua_invite(leg->nua_handle,
 		    NUTAG_MEDIA_ENABLE(0),

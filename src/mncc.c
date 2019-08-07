@@ -703,6 +703,12 @@ static void check_hold_ind(struct mncc_connection *conn, const char *buf, int rc
 	LOGP(DMNCC, LOGL_DEBUG,
 		"leg(%u) is requesting hold.\n", leg->callref);
 	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) other leg gone!\n",
+			leg->callref);
+		mncc_send(leg->conn, MNCC_HOLD_REJ, leg->callref);
+		return;
+	}
 	other_leg->hold_call(other_leg);
 	mncc_send(leg->conn, MNCC_HOLD_CNF, leg->callref);
 	leg->state = MNCC_CC_HOLD;
@@ -721,6 +727,14 @@ static void check_retrieve_ind(struct mncc_connection *conn, const char *buf, in
 	LOGP(DMNCC, LOGL_DEBUG,
 		"leg(%u) is requesting unhold.\n", leg->callref);
 	other_leg = call_leg_other(&leg->base);
+	if (!other_leg) {
+		/* The SIP leg went away while we were holding! */
+		LOGP(DMNCC, LOGL_ERROR, "leg(%u) other leg gone!\n",
+			leg->callref);
+		mncc_send(leg->conn, MNCC_RETRIEVE_CNF, leg->callref);
+		mncc_call_leg_release(&leg->base);
+		return;
+	}
 	other_leg->retrieve_call(other_leg);
 	mncc_send(leg->conn, MNCC_RETRIEVE_CNF, leg->callref);
 	/* In case of call waiting/swap, At this point we need to tell the MSC to send
