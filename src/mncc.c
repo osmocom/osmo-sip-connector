@@ -211,11 +211,21 @@ static void update_rtp(struct call_leg *_leg) {
 	if (_leg->type == CALL_TYPE_MNCC) {
 		leg = (struct mncc_call_leg *) _leg;
 		struct call_leg *other = call_leg_other(&leg->base);
+		if (!other)
+			goto ret_release;
 		send_rtp_connect(leg, other);
-	} else {
+	} else if (_leg->type == CALL_TYPE_SIP) {
 		leg = (struct mncc_call_leg *) call_leg_other(_leg);
+		if (!leg)
+			goto ret_release;
 		send_rtp_connect(leg, _leg);
+	} else {
+		OSMO_ASSERT(false);
 	}
+	return;
+ret_release:
+	LOGP(DMNCC, LOGL_ERROR, "Failed to find other leg.\n");
+	_leg->release_call(_leg);
 }
 
 
