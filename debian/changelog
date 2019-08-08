@@ -1,3 +1,44 @@
+osmo-sip-connector (1.3.0) unstable; urgency=medium
+
+  [ Keith ]
+  * Support International Caller ID
+  * Support Emergency Calling
+  * Add media mode parameter to sdp_create_file()
+  * Handle SIP re-INVITEs
+  * Prepare to support MO Call HOLD
+  * Add support for MNCC HOLD/RETRIEVE
+  * Only send update to MNCC if media info changed.
+  * IPs stored in the call struct are NETWORK byte order
+  * Following from previous commit, assume other->ip is network byte order
+  * inet_ntoa() is deprecated, use inet_ntop() instead
+  * Fix bug with MO calls not connecting.
+  * Define hold/retrieve functions for MO calls
+  * Cosmetic: Logging and Comments, spelling and clarity changes
+  * Handle case where SIP side hangsup while MNCC is on hold
+  * Logging: Make use of Levels, clarify some messages
+  * In hold/retrieve/reinvite, add check that other_leg exists
+
+  [ Harald Welte ]
+  * cosmetic: use OSMO_STRLCPY_ARRAY() instead of osmo_strlcpy()
+  * MNCC: Do not continue with B leg if A leg is cancelled.
+
+  [ Rafael Diniz ]
+  * Added daemonize feature to osmo-sip-connector
+
+  [ Daniel Willmann ]
+  * Properly indent config file
+
+  [ Oliver Smith ]
+  * Cosmetic: debian: build-depends in multiple lines
+  * debian: create -doc subpackage with pdf manuals
+  * contrib/jenkins.sh: run "make maintainer-clean"
+
+  [ Pau Espin Pedrol ]
+  * Remove undefined param passed to {logging,osmo_stats}_vty_add_cmds
+  * Require newer libosmocore 1.0.0
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 08 Aug 2019 17:54:49 +0200
+
 osmo-sip-connector (1.2.0) unstable; urgency=medium
 
   [ Keith ]
