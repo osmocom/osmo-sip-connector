@@ -170,12 +170,14 @@ static int mncc_rtp_write(struct mncc_connection *conn, struct gsm_mncc_rtp *rtp
 	return rc;
 }
 
-static int mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+static int mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref, const char *sdp)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
 
 	mncc.msg_type = msg_type;
 	mncc.callref = callref;
+	if (sdp)
+		OSMO_STRLCPY_ARRAY(mncc.sdp, sdp);
 
 	return mncc_rtp_write(conn, &mncc);
 }
@@ -195,6 +197,10 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	mncc.callref = leg->callref;
 	mncc.addr = other->addr;
 	mncc.payload_type = other->payload_type;
+
+	/* Forward whichever SDP was last received on the other call leg */
+	OSMO_STRLCPY_ARRAY(mncc.sdp, other->rx_sdp);
+
 	/*
 	 * FIXME: mncc.payload_msg_type should already be compatible.. but
 	 * payload_type should be different..
@@ -408,6 +414,8 @@ static void check_rtp_connect(struct mncc_connection *conn, const char *buf, int
 		return;
 	}
 
+	call_leg_rx_sdp(&leg->base, rtp->sdp);
+
 	/* extract information about where the RTP is */
 	if (rtp->addr.ss_family != AF_UNSPEC ||
 	    osmo_sockaddr_port((const struct sockaddr *)&rtp->addr) != 0 ||
@@ -446,6 +454,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	leg->base.addr = rtp->addr;
 	leg->base.payload_type = rtp->payload_type;
 	leg->base.payload_msg_type = rtp->payload_msg_type;
+	call_leg_rx_sdp(&leg->base, rtp->sdp);
 
 	/* TODO.. now we can continue with the call */
 	LOGP(DMNCC, LOGL_INFO,
@@ -485,6 +494,8 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	const struct gsm_mncc_number *called;
 	struct call *call;
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+	const char *sdp = NULL;
 	struct osmo_gcr_parsed gcr;
 
 	if (rc < sizeof(*data)) {
@@ -557,6 +568,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	memcpy(&leg->called, called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
+	call_leg_rx_sdp(&leg->base, data->sdp);
 
 	if (data->fields & MNCC_F_GCR) {
 		leg->base.call->gcr_present = true;
@@ -567,8 +579,14 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",
 		call->id, leg->callref, data->imsi);
 
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg && *other_leg->rx_sdp && other_leg->rx_sdp_changed) {
+		sdp = other_leg->rx_sdp;
+		other_leg->rx_sdp_changed = false;
+	}
+
 	start_cmd_timer(leg, MNCC_RTP_CREATE);
-	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
+	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref, sdp);
 }
 
 /*! Find MNCC Call leg by given MNCC message
@@ -672,6 +690,8 @@ static void check_stp_cmpl_ind(struct mncc_connection *conn, const char *buf, in
 	if (!leg)
 		return;
 
+	call_leg_rx_sdp(&leg->base, data->sdp);
+
 	LOGP(DMNCC, LOGL_INFO, "leg(%u) is now connected.\n", leg->callref);
 	stop_cmd_timer(leg, MNCC_SETUP_COMPL_IND);
 	leg->state = MNCC_CC_CONNECTED;
@@ -701,17 +721,28 @@ static void check_cnf_ind(struct mncc_connection *conn, const char *buf, int rc)
 {
 	const struct gsm_mncc *data;
 	struct mncc_call_leg *leg;
+	struct call_leg *other_leg;
+	const char *sdp = NULL;
 
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
+
+	call_leg_rx_sdp(&leg->base, data->sdp);
+
+	/* Forward SDP received from the other side */
+	other_leg = call_leg_other(&leg->base);
+	if (other_leg && *other_leg->rx_sdp && other_leg->rx_sdp_changed) {
+		sdp = other_leg->rx_sdp;
+		other_leg->rx_sdp_changed = false;
+	}
 
 	LOGP(DMNCC, LOGL_DEBUG,
 		"leg(%u) confirmed. creating RTP socket.\n",
 		leg->callref);
 
 	start_cmd_timer(leg, MNCC_RTP_CREATE);
-	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref);
+	mncc_rtp_send(conn, MNCC_RTP_CREATE, data->callref, sdp);
 }
 
 static void check_alrt_ind(struct mncc_connection *conn, const char *buf, int rc)
@@ -723,6 +754,8 @@ static void check_alrt_ind(struct mncc_connection *conn, const char *buf, int rc
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
+
+	call_leg_rx_sdp(&leg->base, data->sdp);
 
 	LOGP(DMNCC, LOGL_DEBUG,
 		"leg(%u) is alerting.\n", leg->callref);
@@ -802,6 +835,8 @@ static void check_stp_cnf(struct mncc_connection *conn, const char *buf, int rc)
 	if (!leg)
 		return;
 
+	call_leg_rx_sdp(&leg->base, data->sdp);
+
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) setup completed\n", leg->callref);
 
 	other_leg = call_leg_other(&leg->base);
@@ -831,6 +866,8 @@ static void check_dtmf_start(struct mncc_connection *conn, const char *buf, int 
 	if (!leg)
 		return;
 
+	call_leg_rx_sdp(&leg->base, data->sdp);
+
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) DTMF key=%c\n", leg->callref, data->keypad);
 
 	other_leg = call_leg_other(&leg->base);
@@ -852,6 +889,8 @@ static void check_dtmf_stop(struct mncc_connection *conn, const char *buf, int r
 	leg = find_leg(conn, buf, rc, &data);
 	if (!leg)
 		return;
+
+	call_leg_rx_sdp(&leg->base, data->sdp);
 
 	LOGP(DMNCC, LOGL_DEBUG, "leg(%u) DTMF key=%c\n", leg->callref, data->keypad);
 
@@ -945,11 +984,17 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 		msgb_free(msg);
 	}
 
+	/* The call->initial leg is a SIP call leg that starts an MT call. There was SDP received in the SIP INVITE that
+	 * started this call. This here will be the call->remote, always forwarding the SDP that came in on
+	 * call->initial. */
+	if (call->initial && call->initial->rx_sdp_changed) {
+		OSMO_STRLCPY_ARRAY(mncc.sdp, call->initial->rx_sdp);
+		call->initial->rx_sdp_changed = false;
+	}
+
 	/*
 	 * TODO/FIXME:
-	 *  - Determine/request channel based on offered audio codecs
 	 *  - Screening, redirect?
-	 *  - Synth. the bearer caps based on codecs?
 	 */
 	rc = mncc_write(conn, &mncc);
 	if (rc != sizeof(mncc)) {

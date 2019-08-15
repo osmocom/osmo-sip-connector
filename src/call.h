@@ -62,7 +62,11 @@ struct call_leg {
 	/* SDP as received for this call leg. If this is an MNCC call leg, contains the SDP most recently received in an
 	 * MNCC message; if this is a SIP call leg, contains the SDP most recently received in a SIP message. If no SDP
 	 * was received yet, this string is empty. Otherwise a nul terminated string. */
-	char sdp[1024];
+	char rx_sdp[1024];
+	/* If the contents of rx_sdp[] changes, set rx_sdp_changed = true. When the other call leg transmits the next
+	 * message, it can decide whether to include SDP because there is new information, or whether to omit SDP
+	 * because it was already sent identically earlier. */
+	bool rx_sdp_changed;
 
 	/**
 	 * Remote started to ring/alert
@@ -166,6 +170,8 @@ extern struct llist_head g_call_list;
 void calls_init(void);
 
 struct call_leg *call_leg_other(struct call_leg *leg);
+
+void call_leg_rx_sdp(struct call_leg *cl, const char *rx_sdp);
 
 void call_leg_release(struct call_leg *leg);
 

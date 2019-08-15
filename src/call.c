@@ -172,3 +172,20 @@ const char *call_leg_state(struct call_leg *leg)
 		return "Unknown call type";
 	}
 }
+
+void call_leg_rx_sdp(struct call_leg *leg, const char *rx_sdp)
+{
+	/* If no SDP was received, keep whatever SDP was previously seen. */
+	if (!rx_sdp || !*rx_sdp || !strncmp(leg->rx_sdp, rx_sdp, sizeof(leg->rx_sdp))) {
+		LOGP(DAPP, LOGL_DEBUG, "call(%u) leg(0x%p) no new SDP in %s\n", leg->call->id, leg,
+		     osmo_quote_str(rx_sdp, -1));
+		LOGP(DAPP, LOGL_DEBUG, "call(%u) leg(0x%p) keep stored SDP=%s\n", leg->call->id, leg,
+		     osmo_quote_str(leg->rx_sdp, -1));
+		return;
+	}
+	LOGP(DAPP, LOGL_DEBUG, "call(%u) leg(0x%p) received new SDP=%s\n", leg->call->id, leg, osmo_quote_str(rx_sdp, -1));
+	LOGP(DAPP, LOGL_DEBUG, "call(%u) leg(0x%p) replaced old SDP=%s\n", leg->call->id, leg,
+	     osmo_quote_str(leg->rx_sdp, -1));
+	OSMO_STRLCPY_ARRAY(leg->rx_sdp, rx_sdp);
+	leg->rx_sdp_changed = true;
+}
