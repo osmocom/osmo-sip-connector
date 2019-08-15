@@ -46,6 +46,12 @@ static void sip_dtmf_call(struct call_leg *_leg, int keypad);
 static void sip_hold_call(struct call_leg *_leg);
 static void sip_retrieve_call(struct call_leg *_leg);
 
+static const char *sip_get_sdp(const sip_t *sip)
+{
+	if (!sip || !sip->sip_payload)
+		return NULL;
+	return sip->sip_payload->pl_data;
+}
 
 /* Find a SIP Call leg by given nua_handle */
 static struct sip_call_leg *sip_find_leg(nua_handle_t *nh)
@@ -201,6 +207,8 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	nua_handle_bind(nh, leg);
 	leg->sdp_payload = talloc_strdup(leg, sip->sip_payload->pl_data);
 
+	call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
+
 	app_route_call(call,
 			talloc_strdup(leg, from),
 			talloc_strdup(leg, to));
@@ -240,6 +248,8 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 	LOGP(DSIP, LOGL_DEBUG, "pre re-INVITE have IP:port (%s:%u)\n",
 	     osmo_sockaddr_ntop((struct sockaddr*)&prev_addr, ip_addr),
 	     osmo_sockaddr_port((struct sockaddr*)&prev_addr));
+
+	call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
 
 	if (mode == sdp_sendonly) {
 		/* SIP side places call on HOLD */
@@ -360,6 +370,8 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		struct sip_call_leg *leg;
 		leg = (struct sip_call_leg *) hmagic;
 
+		call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
+
 		/* MT call is moving forward */
 
 		/* The dialogue is now confirmed */
@@ -396,8 +408,10 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		 * respond to the re-INVITE query. */
 		if (sip->sip_payload && sip->sip_payload->pl_data) {
 			struct sip_call_leg *leg = sip_find_leg(nh);
-			if (leg)
+			if (leg) {
+				call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
 				sip_handle_reinvite(leg, nh, sip);
+			}
 		}
 	} else if (event == nua_r_bye || event == nua_r_cancel) {
 		/* our bye or hang up is answered */
@@ -423,10 +437,12 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 
 		if (status == 100) {
 			struct sip_call_leg *leg = sip_find_leg(nh);
-			if (leg)
+			if (leg) {
+				call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
 				sip_handle_reinvite(leg, nh, sip);
-			else
+			} else {
 				new_call((struct sip_agent *) magic, nh, sip);
+			}
 		}
 	} else if (event == nua_i_cancel) {
 		struct sip_call_leg *leg;
