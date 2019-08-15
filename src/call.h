@@ -118,12 +118,6 @@ struct sip_call_leg {
 	struct nua_handle_s *nua_handle;
 	enum sip_cc_state state;
 	enum sip_dir dir;
-
-	/* mo field */
-	const char *wanted_codec;
-
-	/* mt field */
-	const char *sdp_payload;
 };
 
 enum mncc_cc_state {
@@ -161,6 +155,8 @@ extern struct llist_head g_call_list;
 void calls_init(void);
 
 struct call_leg *call_leg_other(struct call_leg *leg);
+
+void call_leg_update_sdp(struct call_leg *cl, const char *sdp);
 
 void call_leg_release(struct call_leg *leg);
 

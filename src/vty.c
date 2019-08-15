@@ -211,7 +211,6 @@ static void dump_leg(struct vty *vty, struct call_leg *leg, const char *kind)
 				get_value_string(sip_state_vals, sip->state), VTY_NEWLINE);
 		vty_out(vty, " SIP dir(%s)%s",
 				get_value_string(sip_dir_vals, sip->dir), VTY_NEWLINE);
-		vty_out(vty, " SIP wanted_codec(%s)%s", sip->wanted_codec, VTY_NEWLINE);
 		break;
 	case CALL_TYPE_MNCC:
 		mncc = (struct mncc_call_leg *) leg;
