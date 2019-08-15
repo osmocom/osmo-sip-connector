@@ -54,6 +54,11 @@ struct call_leg {
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
 
+	/* SDP as received for this call leg. If this is an MNCC call leg, contains the SDP most recently received in an
+	 * MNCC message; if this is a SIP call leg, contains the SDP most recently received in a SIP message. If no SDP
+	 * was received yet, this string is empty. Otherwise a nul terminated string. */
+	char sdp[1024];
+
 	/**
 	 * Remote started to ring/alert
 	 */
