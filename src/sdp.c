@@ -191,7 +191,9 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 			continue;
 
 		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (!any_codec && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
+			if (!any_codec
+			    && leg->wanted_codec
+			    && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
 				continue;
 
 			port = media->m_port;
@@ -226,55 +228,59 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	return true;
 }
 
+/* One leg has sent a SIP or MNCC message, which is now translated/forwarded to the counterpart MNCC or SIP.
+ * Take as much from the source's SDP as possible, but make sure the connection mode reflects the 'mode' arg (sendrecv,
+ * recvonly, sendonly, inactive).
+ * For example, if the MSC sent an MNCC_SETUP_IND, the SDP from the MNCC is found in 'other', while 'leg' reflects the
+ * SIP side that should receive this SDP in the SIP Invite that is being composed by the caller of this function.
+ * \param leg  The target for which the returned SDP is intended.
+ * \param other  The source of which we are to reflect the SDP.
+ * \return  SDP string, using 'leg' as talloc ctx.
+ */
 char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode_t mode)
 {
-	char *fmtp_str = NULL, *sdp;
-	char *mode_attribute;
-	char ip_addr[INET6_ADDRSTRLEN];
-	char ipv;
+	sdp_parser_t *parser;
+	sdp_session_t *sdp;
+	sdp_media_t *media;
+	const char *sdp_data;
+	sdp_printer_t *printer;
+	char buf[1024];
+	const char *sdp_str;
+	char *ret;
 
-	osmo_sockaddr_ntop((const struct sockaddr*)&other->addr, ip_addr);
-	ipv = other->addr.ss_family == AF_INET6 ? '6' : '4';
-	leg->wanted_codec = app_media_name(other->payload_msg_type);
-
-	if (strcmp(leg->wanted_codec, "AMR") == 0)
-		fmtp_str = talloc_asprintf(leg, "a=fmtp:%d octet-align=1\r\n", other->payload_type);
-
-	switch (mode) {
-		case sdp_inactive:
-			mode_attribute = "a=inactive\r\n";
-			break;
-		case sdp_sendrecv:
-			mode_attribute = "a=sendrecv\r\n";
-			break;
-		case sdp_sendonly:
-			mode_attribute = "a=sendonly\r\n";
-			break;
-		case sdp_recvonly:
-			mode_attribute = "a=recvonly\r\n";
-			break;
-		default:
-			OSMO_ASSERT(false);
-			break;
+	sdp_data = other->sdp;
+	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
+	if (!parser) {
+		LOGP(DSIP, LOGL_ERROR, "leg(%p) failed to parse SDP\n", other);
+		return talloc_strdup(leg, sdp_data);
 	}
 
-	sdp = talloc_asprintf(leg,
-				"v=0\r\n"
-				"o=Osmocom 0 0 IN IP%c %s\r\n"
-				"s=GSM Call\r\n"
-				"c=IN IP%c %s\r\n"
-				"t=0 0\r\n"
-				"m=audio %d RTP/AVP %d\r\n"
-				"%s"
-				"a=rtpmap:%d %s/8000\r\n"
-				"%s",
-				ipv, ip_addr, ipv, ip_addr,
-				osmo_sockaddr_port((const struct sockaddr *)&other->addr),
-				other->payload_type,
-				fmtp_str ? fmtp_str : "",
-				other->payload_type,
-				leg->wanted_codec,
-				mode_attribute);
-	talloc_free(fmtp_str);
-	return sdp;
+	sdp = sdp_session(parser);
+	if (!sdp) {
+		LOGP(DSIP, LOGL_ERROR, "leg(%p) no sdp session\n", other);
+		sdp_parser_free(parser);
+		return talloc_strdup(leg, sdp_data);
+	}
+
+	for (media = sdp->sdp_media; media; media = media->m_next)
+		media->m_mode = mode;
+
+	printer = sdp_print(NULL, sdp, buf, sizeof(buf), sdp_f_mode_always);
+	if (!printer) {
+		LOGP(DSIP, LOGL_ERROR, "leg(%p) failed to print SDP\n", other);
+		sdp_parser_free(parser);
+		return talloc_strdup(leg, sdp_data);
+	}
+
+	sdp_str = sdp_message(printer);
+	if (!sdp_str) {
+		LOGP(DSIP, LOGL_ERROR, "leg(%p) failed to print SDP: %s\n", other, sdp_printing_error(printer));
+		sdp_str = sdp_data;
+	}
+
+	ret = talloc_strdup(leg, sdp_str);
+
+	sdp_parser_free(parser);
+	sdp_printer_free(printer);
+	return ret;
 }
