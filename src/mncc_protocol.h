@@ -158,6 +158,9 @@ struct gsm_mncc {
 
 	unsigned char	lchan_type;
 	unsigned char	lchan_mode;
+
+	/* A buffer to contain SDP ('\0' terminated) */
+	char		sdp[1024];
 };
 
 struct gsm_data_frame {
@@ -166,7 +169,7 @@ struct gsm_data_frame {
 	unsigned char	data[0];
 };
 
-#define MNCC_SOCK_VERSION	5
+#define MNCC_SOCK_VERSION	6
 struct gsm_mncc_hello {
 	uint32_t	msg_type;
 	uint32_t	version;
@@ -189,6 +192,7 @@ struct gsm_mncc_rtp {
 	uint16_t	port;
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
+	char		sdp[1024];
 };
 
 struct gsm_mncc_bridge {
