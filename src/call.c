@@ -172,3 +172,13 @@ const char *call_leg_state(struct call_leg *leg)
 		return "Unknown call type";
 	}
 }
+
+void call_leg_update_sdp(struct call_leg *leg, const char *sdp)
+{
+	/* If no SDP was received, keep whatever SDP was previously seen. */
+	if (!sdp || !*sdp)
+		return;
+	OSMO_STRLCPY_ARRAY(leg->sdp, sdp);
+	LOGP(DAPP, LOGL_NOTICE, "call(%u) leg(0x%p) received SDP: %s\n",
+	     leg->call->id, leg, leg->sdp);
+}

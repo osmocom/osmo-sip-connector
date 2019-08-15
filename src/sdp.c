@@ -178,7 +178,9 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 			continue;
 
 		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (!any_codec && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
+			if (!any_codec
+			    && leg->wanted_codec
+			    && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
 				continue;
 
 			leg->base.port = media->m_port;
@@ -202,8 +204,19 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	return true;
 }
 
+/* One leg has sent a SIP or MNCC message, which is now translated/forwarded to the counterpart MNCC or SIP.
+ * Take as much from the source's SDP as possible, but make sure the connection mode reflects the 'mode' arg (sendrecv,
+ * recvonly, sendonly, inactive).
+ * @param leg  The target receiving the SDP.
+ * @param other  The source of which we are to reflect the SDP.
+ * For example, if the MNCC sent an MNCC_SETUP_IND, the SDP from the MNCC is found in 'other', while 'leg' reflects the
+ * SIP side that should receive this SDP in the SIP Invite that is being composed by the caller.
+ */
 char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode_t mode)
 {
+	/* TODO: make sure SDP reflects the requested mode */
+	return talloc_strdup(leg, other->sdp);
+#if 0
 	struct in_addr net = { .s_addr = other->ip };
 	char *fmtp_str = NULL, *sdp;
 	char *mode_attribute;
@@ -251,4 +264,5 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 				mode_attribute);
 	talloc_free(fmtp_str);
 	return sdp;
+#endif
 }

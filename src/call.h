@@ -162,6 +162,8 @@ void calls_init(void);
 
 struct call_leg *call_leg_other(struct call_leg *leg);
 
+void call_leg_update_sdp(struct call_leg *cl, const char *sdp);
+
 void call_leg_release(struct call_leg *leg);
 
 
