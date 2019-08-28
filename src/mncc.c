@@ -324,8 +324,12 @@ static void mncc_call_leg_release(struct call_leg *_leg)
 /* Close the MNCC connection/socket */
 static void close_connection(struct mncc_connection *conn)
 {
+	if (conn->fd.fd < 0)
+		return;
+
 	osmo_fd_unregister(&conn->fd);
 	close(conn->fd.fd);
+	conn->fd.fd = -1;
 	osmo_timer_schedule(&conn->reconnect, 5, 0);
 	conn->state = MNCC_DISCONNECTED;
 	if (conn->on_disconnect)
@@ -924,6 +928,7 @@ static void mncc_reconnect(void *data)
 		LOGP(DMNCC, LOGL_ERROR, "Failed to connect(%s). Retrying\n",
 			conn->app->mncc.path);
 		conn->state = MNCC_DISCONNECTED;
+		conn->fd.fd = -1;
 		osmo_timer_schedule(&conn->reconnect, 5, 0);
 		return;
 	}
@@ -1022,6 +1027,7 @@ void mncc_connection_init(struct mncc_connection *conn, struct app_config *cfg)
 	conn->reconnect.data = conn;
 	conn->fd.cb = mncc_data;
 	conn->fd.data = conn;
+	conn->fd.fd = -1;
 	conn->app = cfg;
 	conn->state = MNCC_DISCONNECTED;
 }
