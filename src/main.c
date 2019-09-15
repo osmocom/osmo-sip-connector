@@ -158,9 +158,11 @@ int main(int argc, char **argv)
 	/* sofia sip */
 	sip_agent_init(&g_app.sip.agent, &g_app);
 	rc = sip_agent_start(&g_app.sip.agent);
-	if (rc < 0)
+	if (rc < 0) {
 		LOGP(DSIP, LOGL_ERROR,
-			"Failed to initialize SIP. Running broken\n");
+			"Failed to initialize SIP\n");
+		exit(1);
+	}
 
 	calls_init();
 	app_setup(&g_app);
