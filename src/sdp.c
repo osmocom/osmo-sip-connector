@@ -32,223 +32,86 @@
 
 #include <string.h>
 
-/*
- * Check if the media mode attribute exists in SDP, in this
- * case update the passed pointer with the media mode
- */
-bool sdp_get_sdp_mode(const sip_t *sip, sdp_mode_t *mode) {
+static const struct value_string sdp_mode_attr[] = {
+	{ SDP_MODE_UNSET, ""},
+	{ SDP_MODE_INACTIVE, "a=inactive\r\n"},
+	{ SDP_MODE_SENDRECV, "a=sendrecv\r\n"},
+	{ SDP_MODE_SENDONLY, "a=sendonly\r\n"},
+	{ SDP_MODE_RECVONLY, "a=recvonly\r\n"},
+	{}
+};
 
-	const char *sdp_data;
-	sdp_parser_t *parser;
-	sdp_session_t *sdp;
+const struct value_string sdp_mode_names[] = {
+	{ SDP_MODE_UNSET, "unset"},
+	{ SDP_MODE_INACTIVE, "inactive"},
+	{ SDP_MODE_SENDRECV, "sendrecv"},
+	{ SDP_MODE_SENDONLY, "sendonly"},
+	{ SDP_MODE_RECVONLY, "recvonly"},
+	{}
+};
 
-	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
-		LOGP(DSIP, LOGL_ERROR, "No SDP file\n");
-		return false;
-	}
+/* Return location of a given SDP sendrecv mode attribute, if any. */
+const char *sdp_find_mode(const char *sdp_str, enum sdp_mode mode)
+{
+	const char *found;
+	if (mode == SDP_MODE_UNSET)
+		return NULL;
 
-	sdp_data = sip->sip_payload->pl_data;
-	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), sdp_f_mode_0000);
-	if (!parser) {
-		LOGP(DSIP, LOGL_ERROR, "Failed to parse SDP\n");
-		return false;
-	}
+	found = strstr(sdp_str, get_value_string(sdp_mode_attr, mode));
+	if (!found)
+		return NULL;
 
-	sdp = sdp_session(parser);
-	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "No sdp session\n");
-		sdp_parser_free(parser);
-		return false;
-	}
+	/* At the start of the line? */
+	if (found > sdp_str && *(found-1) != '\n')
+		return NULL;
 
-	if (!sdp->sdp_media || !sdp->sdp_media->m_mode) {
-		sdp_parser_free(parser);
-		return sdp_sendrecv;
-	}
-
-	sdp_parser_free(parser);
-	*mode = sdp->sdp_media->m_mode;
-	return true;
+	return found;
 }
 
-/*
- * We want to decide on the audio codec later but we need to see
- * if it is even including some of the supported ones.
- */
-bool sdp_screen_sdp(const sip_t *sip)
+/* Return the last SDP sendrecv mode attribute, or SDP_MODE_UNSET */
+enum sdp_mode sdp_get_mode(const char *sdp_str, const char **found_at)
 {
-	const char *sdp_data;
-	sdp_parser_t *parser;
-	sdp_session_t *sdp;
-	sdp_media_t *media;
-
-	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
-		LOGP(DSIP, LOGL_ERROR, "No SDP file\n");
-		return false;
-	}
-
-	sdp_data = sip->sip_payload->pl_data;
-	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
-	if (!parser) {
-		LOGP(DSIP, LOGL_ERROR, "Failed to parse SDP\n");
-		return false;
-	}
-
-	sdp = sdp_session(parser);
-	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "No sdp session\n");
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	for (media = sdp->sdp_media; media; media = media->m_next) {
-		sdp_rtpmap_t *map;
-
-		if (media->m_proto != sdp_proto_rtp)
+	const char *at = NULL;
+	enum sdp_mode mode = SDP_MODE_UNSET;
+	enum sdp_mode i;
+	for (i = 0; i < SDP_MODES_COUNT; i++) {
+		const char *found = sdp_find_mode(sdp_str, i);
+		if (!found)
 			continue;
-		if (media->m_type != sdp_media_audio)
+		/* If more than one sendrecv attrib are in the SDP string, let the last one win */
+		if (at > found)
 			continue;
-
-		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (strcasecmp(map->rm_encoding, "GSM") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "GSM-EFR") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "GSM-HR-08") == 0)
-				goto success;
-			if (strcasecmp(map->rm_encoding, "AMR") == 0)
-				goto success;
-		}
+		at = found;
+		mode = i;
 	}
 
-	sdp_parser_free(parser);
-	return false;
-
-success:
-	sdp_parser_free(parser);
-	return true;
+	if (found_at)
+		*found_at = at;
+	return mode;
 }
 
-bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
+/* Remove all pre-existing occurences of an SDP mode attribute, and then add the given mode attribute (if not
+ * SDP_MODE_UNSET). Allocate the resulting string from ctx (talloc). */
+char *sdp_copy_and_set_mode(void *ctx, const char *sdp_str, enum sdp_mode mode)
 {
-	sdp_connection_t *conn;
-	sdp_session_t *sdp;
-	sdp_parser_t *parser;
-	sdp_media_t *media;
-	const char *sdp_data;
-	bool found_conn = false, found_map = false;
+	char *removed = talloc_strdup(ctx, sdp_str);
+	char *added;
+	char *found_at;
 
-	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) but no SDP file\n", leg);
-		return false;
+	/* Remove */
+	while (sdp_get_mode(removed, (const char**)&found_at) != SDP_MODE_UNSET) {
+		char *next_line = strchr(found_at, '\n');
+		if (!next_line)
+			*found_at = '\0';
+		else
+			strcpy(found_at, next_line);
 	}
 
-	sdp_data = sip->sip_payload->pl_data;
-	parser = sdp_parse(NULL, sdp_data, strlen(sdp_data), 0);
-	if (!parser) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) failed to parse SDP\n",
-			leg);
-		return false;
-	}
+	/* Add */
+	if (mode == SDP_MODE_UNSET)
+		return removed;
 
-	sdp = sdp_session(parser);
-	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) no sdp session\n", leg);
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	for (conn = sdp->sdp_connection; conn; conn = conn->c_next) {
-		struct in_addr addr;
-
-		if (conn->c_addrtype != sdp_addr_ip4)
-			continue;
-		inet_aton(conn->c_address, &addr);
-		leg->base.ip = addr.s_addr;
-		found_conn = true;
-		break;
-	}
-
-	for (media = sdp->sdp_media; media; media = media->m_next) {
-		sdp_rtpmap_t *map;
-
-		if (media->m_proto != sdp_proto_rtp)
-			continue;
-		if (media->m_type != sdp_media_audio)
-			continue;
-
-		for (map = media->m_rtpmaps; map; map = map->rm_next) {
-			if (!any_codec && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
-				continue;
-
-			leg->base.port = media->m_port;
-			leg->base.payload_type = map->rm_pt;
-			found_map = true;
-			break;
-		}
-
-		if (found_map)
-			break;
-	}
-
-	if (!found_conn || !found_map) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) did not find %d/%d\n",
-			leg, found_conn, found_map);
-		sdp_parser_free(parser);
-		return false;
-	}
-
-	sdp_parser_free(parser);
-	return true;
-}
-
-char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode_t mode)
-{
-	struct in_addr net = { .s_addr = other->ip };
-	char *fmtp_str = NULL, *sdp;
-	char *mode_attribute;
-	char ip_addr[INET_ADDRSTRLEN];
-
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	leg->wanted_codec = app_media_name(other->payload_msg_type);
-
-	if (strcmp(leg->wanted_codec, "AMR") == 0)
-		fmtp_str = talloc_asprintf(leg, "a=fmtp:%d octet-align=1\r\n", other->payload_type);
-
-	switch (mode) {
-		case sdp_inactive:
-			mode_attribute = "a=inactive\r\n";
-			break;
-		case sdp_sendrecv:
-			mode_attribute = "a=sendrecv\r\n";
-			break;
-		case sdp_sendonly:
-			mode_attribute = "a=sendonly\r\n";
-			break;
-		case sdp_recvonly:
-			mode_attribute = "a=recvonly\r\n";
-			break;
-		default:
-			OSMO_ASSERT(false);
-			break;
-	}
-
-	sdp = talloc_asprintf(leg,
-				"v=0\r\n"
-				"o=Osmocom 0 0 IN IP4 %s\r\n"
-				"s=GSM Call\r\n"
-				"c=IN IP4 %s\r\n"
-				"t=0 0\r\n"
-				"m=audio %d RTP/AVP %d\r\n"
-				"%s"
-				"a=rtpmap:%d %s/8000\r\n"
-				"%s",
-				ip_addr, ip_addr,
-				other->port, other->payload_type,
-				fmtp_str ? fmtp_str : "",
-				other->payload_type,
-				leg->wanted_codec,
-				mode_attribute);
-	talloc_free(fmtp_str);
-	return sdp;
+	added = talloc_asprintf(ctx, "%s%s", removed, get_value_string(sdp_mode_attr, mode));
+	talloc_free(removed);
+	return added;
 }

@@ -104,7 +104,6 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	struct call *call;
 	struct sip_call_leg *leg;
 	const char *from = NULL, *to = NULL;
-	char ip_addr[INET_ADDRSTRLEN];
 
 	LOGP(DSIP, LOGL_INFO, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
 
@@ -146,11 +145,10 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 
 static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, const sip_t *sip) {
 
+	const char *reinvite_sdp;
 	char *sdp;
-	sdp_mode_t mode = sdp_sendrecv;
-	uint32_t ip = leg->base.ip;
-	uint16_t port = leg->base.port;
-	char ip_addr[INET_ADDRSTRLEN];
+	enum sdp_mode mode;
+	enum sdp_mode mode_other;
 
 	LOGP(DSIP, LOGL_INFO, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
@@ -162,11 +160,12 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		return;
 	}
 
-	if (!sdp_get_sdp_mode(sip, &mode)) {
+	reinvite_sdp = sip_get_sdp(sip);
+	if (!reinvite_sdp) {
 		/* re-INVITE with no SDP.
 		 * We should respond with SDP reflecting current session
 		 */
-		sdp = sdp_create_file(leg, other, sdp_sendrecv);
+		sdp = sdp_copy_and_set_mode(leg, other->sdp, SDP_MODE_SENDRECV);
 		nua_respond(nh, SIP_200_OK,
 			    NUTAG_MEDIA_ENABLE(0),
 			    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
@@ -176,37 +175,32 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		return;
 	}
 
-	struct in_addr net = { .s_addr = leg->base.ip };
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DSIP, LOGL_DEBUG, "pre re-INVITE have IP:port (%s:%u)\n", ip_addr, leg->base.port);
+	mode = sdp_get_mode(reinvite_sdp, NULL);
 
-	call_leg_update_sdp(&leg->base, sip_get_sdp(sip));
+	call_leg_update_sdp(&leg->base, reinvite_sdp);
 
-	if (mode == sdp_sendonly) {
+	switch (mode) {
+	case SDP_MODE_SENDONLY:
 		/* SIP side places call on HOLD */
-		sdp = sdp_create_file(leg, other, sdp_recvonly);
-		/* TODO: Tell core network to stop sending RTP ? */
-	} else {
-		/* SIP re-INVITE may want to change media, IP, port */
-		if (!sdp_extract_sdp(leg, sip, true)) {
-			LOGP(DSIP, LOGL_ERROR, "leg(%p) no audio, releasing\n", leg);
-			nua_respond(nh, SIP_406_NOT_ACCEPTABLE, TAG_END());
-			nua_handle_destroy(nh);
-			call_leg_release(&leg->base);
-			return;
-		}
-		struct in_addr net = { .s_addr = leg->base.ip };
-		inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-		LOGP(DSIP, LOGL_DEBUG, "Media IP:port in re-INVITE: (%s:%u)\n", ip_addr, leg->base.port);
-		if (ip != leg->base.ip || port != leg->base.port) {
-			LOGP(DSIP, LOGL_INFO, "re-INVITE changes media connection.\n");
-			if (other->update_rtp)
-				other->update_rtp(leg->base.call->remote);
-		}
-		sdp = sdp_create_file(leg, other, sdp_sendrecv);
+		mode_other = SDP_MODE_RECVONLY;
+		break;
+	case SDP_MODE_RECVONLY:
+		mode_other = SDP_MODE_SENDONLY;
+		break;
+	case SDP_MODE_INACTIVE:
+		mode_other = SDP_MODE_INACTIVE;
+		break;
+	default:
+		mode_other = SDP_MODE_SENDRECV;
+		break;
 	}
 
-	LOGP(DSIP, LOGL_DEBUG, "Sending 200 response to re-INVITE for mode(%u)\n", mode);
+	if (other->update_rtp)
+		other->update_rtp(leg->base.call->remote);
+
+	sdp = sdp_copy_and_set_mode(leg, other->sdp, mode_other);
+	LOGP(DSIP, LOGL_DEBUG, "Sending 200 response (%s) to re-INVITE with mode '%s'\n",
+	     sdp_mode_name(mode_other), sdp_mode_name(mode));
 	nua_respond(nh, SIP_200_OK,
 		    NUTAG_MEDIA_ENABLE(0),
 		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
@@ -472,17 +466,13 @@ static void sip_connect_call(struct call_leg *_leg)
 	OSMO_ASSERT(_leg->type == CALL_TYPE_SIP);
 	leg = (struct sip_call_leg *) _leg;
 
-	/*
-	 * TODO/FIXME: check if resulting codec is compatible..
-	 */
-
 	other = call_leg_other(&leg->base);
 	if (!other) {
 		sip_release_call(&leg->base);
 		return;
 	}
 
-	sdp = sdp_create_file(leg, other, sdp_sendrecv);
+	sdp = sdp_copy_and_set_mode(leg, other->sdp, SDP_MODE_SENDRECV);
 
 	leg->state = SIP_CC_CONNECTED;
 	nua_respond(leg->nua_handle, SIP_200_OK,
@@ -521,7 +511,7 @@ static void sip_hold_call(struct call_leg *_leg)
 		sip_release_call(&leg->base);
 		return;
 	}
-	char *sdp = sdp_create_file(leg, other_leg, sdp_sendonly);
+	char *sdp = sdp_copy_and_set_mode(leg, other_leg->sdp, SDP_MODE_SENDONLY);
 	nua_invite(leg->nua_handle,
 		    NUTAG_MEDIA_ENABLE(0),
 		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
@@ -543,7 +533,7 @@ static void sip_retrieve_call(struct call_leg *_leg)
 		sip_release_call(&leg->base);
 		return;
 	}
-	char *sdp = sdp_create_file(leg, other_leg, sdp_sendrecv);
+	char *sdp = sdp_copy_and_set_mode(leg, other_leg->sdp, SDP_MODE_SENDRECV);
 	nua_invite(leg->nua_handle,
 		    NUTAG_MEDIA_ENABLE(0),
 		    SIPTAG_CONTENT_TYPE_STR("application/sdp"),
@@ -566,7 +556,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				called_num,
 				agent->app->sip.remote_addr,
 				agent->app->sip.remote_port);
-	char *sdp = sdp_create_file(leg, other, sdp_sendrecv);
+	char *sdp = sdp_copy_and_set_mode(leg, other->sdp, SDP_MODE_SENDRECV);
 
 	leg->state = SIP_CC_INITIAL;
 	leg->dir = SIP_DIR_MT;

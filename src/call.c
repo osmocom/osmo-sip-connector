@@ -179,6 +179,4 @@ void call_leg_update_sdp(struct call_leg *leg, const char *sdp)
 	if (!sdp || !*sdp)
 		return;
 	OSMO_STRLCPY_ARRAY(leg->sdp, sdp);
-	LOGP(DAPP, LOGL_NOTICE, "call(%u) leg(0x%p) received SDP: %s\n",
-	     leg->call->id, leg, leg->sdp);
 }
