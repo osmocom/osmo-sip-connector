@@ -666,7 +666,19 @@ static void sip_logger(void *stream, char const *fmt, va_list ap)
 	 * the log handler call-back function, so we have no clue what log level the
 	 * currently logged message was sent for :(  As a result, we can only use one
 	 * hard-coded LOGL_NOTICE here */
-	osmo_vlogp(DSIP, LOGL_NOTICE, "", 0, 0, fmt, ap);
+	if (!log_check_level(DSIP, LOGL_NOTICE))
+		return;
+	/* The sofia-sip log line *sometimes* lacks a terminating '\n'. Add it. */
+	char log_line[256];
+	int rc = vsnprintf(log_line, sizeof(log_line), fmt, ap);
+	if (rc > 0) {
+		/* since we're explicitly checking for sizeof(log_line), we can use vsnprintf()'s return value (which,
+		 * alone, would possibly cause writing past the buffer's end). */
+		char *end = log_line + OSMO_MIN(rc, sizeof(log_line) - 2);
+		osmo_strlcpy(end, "\n", 2);
+		LOGP(DSIP, LOGL_NOTICE, "%s", log_line);
+	} else
+		LOGP(DSIP, LOGL_NOTICE, "unknown logging from sip\n");
 }
 
 void sip_agent_init(struct sip_agent *agent, struct app_config *app)
