@@ -472,12 +472,6 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	struct call *call;
 	struct mncc_call_leg *leg;
 
-	if (rc != sizeof(*data)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(*data));
-		return close_connection(conn);
-	}
-
 	data = (const struct gsm_mncc *) buf;
 	called = &data->called;
 
@@ -547,13 +541,6 @@ static struct mncc_call_leg *find_leg(struct mncc_connection *conn,
 					const char *buf, int rc, const struct gsm_mncc **mncc)
 {
 	struct mncc_call_leg *leg;
-
-	if (rc != sizeof(**mncc)) {
-		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
-			rc, sizeof(**mncc));
-		close_connection(conn);
-		return NULL;
-	}
 
 	*mncc = (const struct gsm_mncc *) buf;
 	leg = mncc_find_leg((*mncc)->callref);
