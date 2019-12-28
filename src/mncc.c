@@ -276,6 +276,14 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 	other_leg = call_leg_other(&leg->base);
 	if (other_leg && other_leg->port != 0 && other_leg->ip != 0)
 		send_rtp_connect(leg, other_leg);
+
+	/* We already called call_leg_update_sdp() in nua_callback()
+	   so the MSC should now have the SDP that came with the 183
+	   We'll just call send rtp_connect now so the caller can hear
+	   early media.
+	*/
+	if (other_leg)
+		send_rtp_connect(leg, other_leg);
 }
 
 /* RELEASE call-back for MNCC call leg */
