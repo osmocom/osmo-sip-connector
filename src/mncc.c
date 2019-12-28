@@ -355,7 +355,7 @@ static void continue_mo_call(struct mncc_call_leg *leg)
 	leg->state = MNCC_CC_PROCEEDING;
 
 	if (leg->called.type == GSM340_TYPE_INTERNATIONAL)
-		dest = talloc_asprintf(leg, "+%.32s", leg->called.number);
+		dest = talloc_asprintf(leg, "00%.32s", leg->called.number);
 	else
 		dest = talloc_asprintf(leg, "%.32s", leg->called.number);
 
