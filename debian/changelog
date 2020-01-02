@@ -1,3 +1,25 @@
+osmo-sip-connector (1.4.0) unstable; urgency=medium
+
+  [ Keith ]
+  * coverity: Address issue found by coverity
+
+  [ Philipp Maier ]
+  * mncc: check fd before closing a connection
+
+  [ Alexander Couzens ]
+  * .service: require to ran after network-online.target
+  * exit if the sip agent failed to start
+
+  [ Oliver Smith ]
+  * mncc.c: fix gsm_mncc_rtp size checks
+  * osmoappdesc.py: switch to python 3
+
+  [ Neels Hofmeyr ]
+  * MNCC v6: add optional SDP to the socket protocol
+  * logging from sofia: add missing newline
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Thu, 02 Jan 2020 21:35:01 +0100
+
 osmo-sip-connector (1.3.0) unstable; urgency=medium
 
   [ Keith ]
