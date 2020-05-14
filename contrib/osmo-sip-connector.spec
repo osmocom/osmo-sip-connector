@@ -12,11 +12,8 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
-#
-
 Name:           osmo-sip-connector
-Version:        1.4.0.0
+Version:        0.0.0
 Release:        0
 Summary:        MNCC to SIP bridge for osmo-nitb
 License:        AGPL-3.0-or-later AND GPL-2.0-or-later
@@ -27,7 +24,11 @@ BuildRequires:  autoconf
 BuildRequires:  automake
 BuildRequires:  libtool
 BuildRequires:  pkgconfig >= 0.20
+%if 0%{?centos_ver}
+BuildRequires:  systemd
+%else
 BuildRequires:  systemd-rpm-macros
+%endif
 BuildRequires:  pkgconfig(libosmocore) >= 1.0.0
 BuildRequires:  pkgconfig(libosmogsm) >= 1.0.0
 BuildRequires:  pkgconfig(libosmovty) >= 1.0.0
@@ -51,6 +52,7 @@ make %{?_smp_mflags}
 %install
 %make_install
 
+%if 0%{?suse_version}
 %preun
 %service_del_preun %{name}.service
 
@@ -62,6 +64,7 @@ make %{?_smp_mflags}
 
 %post
 %service_add_post %{name}.service
+%endif
 
 %check
 make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
