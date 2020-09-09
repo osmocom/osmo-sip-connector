@@ -32,6 +32,8 @@
 
 #include <string.h>
 
+#include <osmocom/core/socket.h>
+
 /*
  * Check if the media mode attribute exists in SDP, in this
  * case update the passed pointer with the media mode
@@ -136,6 +138,7 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	sdp_parser_t *parser;
 	sdp_media_t *media;
 	const char *sdp_data;
+	uint16_t port;
 	bool found_conn = false, found_map = false;
 
 	if (!sip->sip_payload || !sip->sip_payload->pl_data) {
@@ -159,13 +162,22 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	}
 
 	for (conn = sdp->sdp_connection; conn; conn = conn->c_next) {
-		struct in_addr addr;
-
-		if (conn->c_addrtype != sdp_addr_ip4)
+		switch (conn->c_addrtype) {
+		case sdp_addr_ip4:
+			leg->base.addr.ss_family = AF_INET;
+			inet_pton(AF_INET, conn->c_address,
+				  &((struct sockaddr_in*)&leg->base.addr)->sin_addr);
+			found_conn = true;
+			break;
+		case sdp_addr_ip6:
+			leg->base.addr.ss_family = AF_INET6;
+			inet_pton(AF_INET6, conn->c_address,
+				  &((struct sockaddr_in6*)&leg->base.addr)->sin6_addr);
+			found_conn = true;
+			break;
+		default:
 			continue;
-		inet_aton(conn->c_address, &addr);
-		leg->base.ip = addr.s_addr;
-		found_conn = true;
+		}
 		break;
 	}
 
@@ -181,7 +193,7 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 			if (!any_codec && strcasecmp(map->rm_encoding, leg->wanted_codec) != 0)
 				continue;
 
-			leg->base.port = media->m_port;
+			port = media->m_port;
 			leg->base.payload_type = map->rm_pt;
 			found_map = true;
 			break;
@@ -198,18 +210,30 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 		return false;
 	}
 
+	switch (leg->base.addr.ss_family) {
+	case AF_INET:
+		((struct sockaddr_in*)&leg->base.addr)->sin_port = htons(port);
+		break;
+	case AF_INET6:
+		((struct sockaddr_in6*)&leg->base.addr)->sin6_port = htons(port);
+		break;
+	default:
+		OSMO_ASSERT(0);
+	}
+
 	sdp_parser_free(parser);
 	return true;
 }
 
 char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode_t mode)
 {
-	struct in_addr net = { .s_addr = other->ip };
 	char *fmtp_str = NULL, *sdp;
 	char *mode_attribute;
-	char ip_addr[INET_ADDRSTRLEN];
+	char ip_addr[INET6_ADDRSTRLEN];
+	char ipv;
 
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
+	osmo_sockaddr_ntop((const struct sockaddr*)&other->addr, ip_addr);
+	ipv = other->addr.ss_family == AF_INET6 ? '6' : '4';
 	leg->wanted_codec = app_media_name(other->payload_msg_type);
 
 	if (strcmp(leg->wanted_codec, "AMR") == 0)
@@ -235,16 +259,17 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 
 	sdp = talloc_asprintf(leg,
 				"v=0\r\n"
-				"o=Osmocom 0 0 IN IP4 %s\r\n"
+				"o=Osmocom 0 0 IN IP%c %s\r\n"
 				"s=GSM Call\r\n"
-				"c=IN IP4 %s\r\n"
+				"c=IN IP%c %s\r\n"
 				"t=0 0\r\n"
 				"m=audio %d RTP/AVP %d\r\n"
 				"%s"
 				"a=rtpmap:%d %s/8000\r\n"
 				"%s",
-				ip_addr, ip_addr,
-				other->port, other->payload_type,
+				ipv, ip_addr, ipv, ip_addr,
+				osmo_sockaddr_port((const struct sockaddr *)&other->addr),
+				other->payload_type,
 				fmtp_str ? fmtp_str : "",
 				other->payload_type,
 				leg->wanted_codec,

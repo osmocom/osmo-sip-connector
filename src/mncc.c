@@ -174,7 +174,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 {
 	struct gsm_mncc_rtp mncc = { 0, };
 	int rc;
-	char ip_addr[INET_ADDRSTRLEN];
+	char ip_addr[INET6_ADDRSTRLEN];
 
 	/*
 	 * Send RTP CONNECT and we handle the general failure of it by
@@ -182,16 +182,15 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	 */
 	mncc.msg_type = MNCC_RTP_CONNECT;
 	mncc.callref = leg->callref;
-	mncc.ip = ntohl(other->ip);
-	mncc.port = other->port;
+	mncc.addr = other->addr;
 	mncc.payload_type = other->payload_type;
 	/*
 	 * FIXME: mncc.payload_msg_type should already be compatible.. but
 	 * payload_type should be different..
 	 */
-	struct in_addr net = { .s_addr = other->ip };
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n", ip_addr, mncc.port);
+	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n",
+	     osmo_sockaddr_ntop((const struct sockaddr*)&other->addr, ip_addr),
+	     osmo_sockaddr_port((const struct sockaddr*)&other->addr));
 	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
 	if (rc != sizeof(mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n",
@@ -272,7 +271,8 @@ static void mncc_call_leg_ring(struct call_leg *_leg)
 	 * FIXME: We would like to keep this as recvonly...
 	 */
 	other_leg = call_leg_other(&leg->base);
-	if (other_leg && other_leg->port != 0 && other_leg->ip != 0)
+	if (other_leg && other_leg->addr.ss_family != AF_UNSPEC &&
+	    osmo_sockaddr_port((const struct sockaddr *)&other_leg->addr) != 0)
 		send_rtp_connect(leg, other_leg);
 }
 
@@ -397,7 +397,9 @@ static void check_rtp_connect(struct mncc_connection *conn, const char *buf, int
 	}
 
 	/* extract information about where the RTP is */
-	if (rtp->ip != 0 || rtp->port != 0 || rtp->payload_type != 0)
+	if (rtp->addr.ss_family != AF_UNSPEC ||
+	    osmo_sockaddr_port((const struct sockaddr *)&rtp->addr) != 0 ||
+	    rtp->payload_type != 0)
 		return;
 
 	LOGP(DMNCC, LOGL_ERROR, "leg(%u) rtp connect failed\n", rtp->callref);
@@ -412,7 +414,7 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 {
 	const struct gsm_mncc_rtp *rtp;
 	struct mncc_call_leg *leg;
-	char ip_addr[INET_ADDRSTRLEN];
+	char ip_addr[INET6_ADDRSTRLEN];
 
 	if (rc < sizeof(*rtp)) {
 		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc_rtp of wrong size %d < %zu\n",
@@ -428,17 +430,16 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	}
 
 	/* extract information about where the RTP is */
-	leg->base.ip = htonl(rtp->ip);
-	leg->base.port = rtp->port;
+	leg->base.addr = rtp->addr;
 	leg->base.payload_type = rtp->payload_type;
 	leg->base.payload_msg_type = rtp->payload_msg_type;
 
 	/* TODO.. now we can continue with the call */
-	struct in_addr net = { .s_addr = leg->base.ip };
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	LOGP(DMNCC, LOGL_INFO,
 		"RTP continue leg(%u) ip(%s), port(%u) pt(%u) ptm(%u)\n",
-		leg->callref, ip_addr, leg->base.port,
+		leg->callref,
+		osmo_sockaddr_ntop((const struct sockaddr*)&leg->base.addr, ip_addr),
+		osmo_sockaddr_port((const struct sockaddr*)&leg->base.addr),
 		leg->base.payload_type, leg->base.payload_msg_type);
 	stop_cmd_timer(leg, MNCC_RTP_CREATE);
 	continue_call(leg);

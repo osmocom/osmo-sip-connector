@@ -25,6 +25,7 @@
 #include "sdp.h"
 
 #include <osmocom/core/utils.h>
+#include <osmocom/core/socket.h>
 
 #include <sofia-sip/sip_status.h>
 #include <sofia-sip/su_log.h>
@@ -33,6 +34,7 @@
 #include <talloc.h>
 
 #include <string.h>
+#include <netinet/in.h>
 
 extern void *tall_mncc_ctx;
 
@@ -110,7 +112,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	struct call *call;
 	struct sip_call_leg *leg;
 	const char *from = NULL, *to = NULL;
-	char ip_addr[INET_ADDRSTRLEN];
+	char ip_addr[INET6_ADDRSTRLEN];
 
 	LOGP(DSIP, LOGL_INFO, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
 
@@ -159,11 +161,9 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		call_leg_release(&leg->base);
 		return;
 	}
-	struct in_addr net = { .s_addr = leg->base.ip };
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
 	LOGP(DSIP, LOGL_INFO, "SDP Extracted: IP=(%s) PORT=(%u) PAYLOAD=(%u).\n",
-		               ip_addr,
-		               leg->base.port,
+		               osmo_sockaddr_ntop((const struct sockaddr *)&leg->base.addr, ip_addr),
+		               osmo_sockaddr_port((const struct sockaddr *)&leg->base.addr),
 		               leg->base.payload_type);
 
 	leg->base.release_call = sip_release_call;
@@ -186,9 +186,8 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 
 	char *sdp;
 	sdp_mode_t mode = sdp_sendrecv;
-	uint32_t ip = leg->base.ip;
-	uint16_t port = leg->base.port;
-	char ip_addr[INET_ADDRSTRLEN];
+	char ip_addr[INET6_ADDRSTRLEN];
+	struct sockaddr_storage prev_addr = leg->base.addr;
 
 	LOGP(DSIP, LOGL_INFO, "re-INVITE for call %s\n", sip->sip_call_id->i_id);
 
@@ -214,9 +213,9 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		return;
 	}
 
-	struct in_addr net = { .s_addr = leg->base.ip };
-	inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-	LOGP(DSIP, LOGL_DEBUG, "pre re-INVITE have IP:port (%s:%u)\n", ip_addr, leg->base.port);
+	LOGP(DSIP, LOGL_DEBUG, "pre re-INVITE have IP:port (%s:%u)\n",
+	     osmo_sockaddr_ntop((struct sockaddr*)&leg->base.addr, ip_addr),
+	     osmo_sockaddr_port((struct sockaddr*)&leg->base.addr));
 
 	if (mode == sdp_sendonly) {
 		/* SIP side places call on HOLD */
@@ -231,10 +230,11 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 			call_leg_release(&leg->base);
 			return;
 		}
-		struct in_addr net = { .s_addr = leg->base.ip };
-		inet_ntop(AF_INET, &net, ip_addr, sizeof(ip_addr));
-		LOGP(DSIP, LOGL_DEBUG, "Media IP:port in re-INVITE: (%s:%u)\n", ip_addr, leg->base.port);
-		if (ip != leg->base.ip || port != leg->base.port) {
+		LOGP(DSIP, LOGL_DEBUG, "Media IP:port in re-INVITE: (%s:%u)\n",
+		     osmo_sockaddr_ntop((struct sockaddr*)&leg->base.addr, ip_addr),
+		     osmo_sockaddr_port((struct sockaddr*)&leg->base.addr));
+		if (osmo_sockaddr_cmp((struct osmo_sockaddr *)&prev_addr,
+				      (struct osmo_sockaddr *)&leg->base)) {
 			LOGP(DSIP, LOGL_INFO, "re-INVITE changes media connection.\n");
 			if (other->update_rtp)
 				other->update_rtp(leg->base.call->remote);

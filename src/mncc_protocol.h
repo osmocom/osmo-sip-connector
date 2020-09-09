@@ -1,4 +1,4 @@
-/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface 
+/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
@@ -28,6 +28,7 @@
 #include <osmocom/gsm/mncc.h>
 
 #include <stdint.h>
+#include <netinet/in.h>
 
 struct gsm_network;
 struct msgb;
@@ -169,7 +170,7 @@ struct gsm_data_frame {
 	unsigned char	data[0];
 };
 
-#define MNCC_SOCK_VERSION	6
+#define MNCC_SOCK_VERSION	7
 struct gsm_mncc_hello {
 	uint32_t	msg_type;
 	uint32_t	version;
@@ -188,8 +189,7 @@ struct gsm_mncc_hello {
 struct gsm_mncc_rtp {
 	uint32_t	msg_type;
 	uint32_t	callref;
-	uint32_t	ip;
-	uint16_t	port;
+	struct sockaddr_storage addr;
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
 	char		sdp[1024];

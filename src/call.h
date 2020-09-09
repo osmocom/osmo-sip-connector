@@ -7,6 +7,7 @@
 #include <osmocom/core/utils.h>
 
 #include <stdbool.h>
+#include <netinet/in.h>
 
 struct sip_agent;
 struct mncc_connection;
@@ -49,8 +50,7 @@ struct call_leg {
 	/**
 	 * RTP data
 	 */
-	uint32_t	ip;
-	uint16_t	port;
+	struct sockaddr_storage addr;
 	uint32_t	payload_type;
 	uint32_t	payload_msg_type;
 
