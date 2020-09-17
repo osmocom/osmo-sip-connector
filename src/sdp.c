@@ -164,20 +164,21 @@ bool sdp_extract_sdp(struct sip_call_leg *leg, const sip_t *sip, bool any_codec)
 	for (conn = sdp->sdp_connection; conn; conn = conn->c_next) {
 		switch (conn->c_addrtype) {
 		case sdp_addr_ip4:
+			if (inet_pton(AF_INET, conn->c_address,
+				      &((struct sockaddr_in*)&leg->base.addr)->sin_addr) != 1)
+				continue;
 			leg->base.addr.ss_family = AF_INET;
-			inet_pton(AF_INET, conn->c_address,
-				  &((struct sockaddr_in*)&leg->base.addr)->sin_addr);
-			found_conn = true;
 			break;
 		case sdp_addr_ip6:
+			if (inet_pton(AF_INET6, conn->c_address,
+				      &((struct sockaddr_in6*)&leg->base.addr)->sin6_addr) != 1)
+				continue;
 			leg->base.addr.ss_family = AF_INET6;
-			inet_pton(AF_INET6, conn->c_address,
-				  &((struct sockaddr_in6*)&leg->base.addr)->sin6_addr);
-			found_conn = true;
 			break;
 		default:
 			continue;
 		}
+		found_conn = true;
 		break;
 	}
 
