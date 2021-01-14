@@ -156,21 +156,28 @@ static int mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t c
 	return mncc_write(conn, &mncc);
 }
 
-static int mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+static int mncc_rtp_write(struct mncc_connection *conn, struct gsm_mncc_rtp *rtp)
 {
 	int rc;
+
+	rc = write(conn->fd.fd, &rtp, sizeof(rtp));
+	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(rtp->msg_type));
+	if (rc != sizeof(*rtp)) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", rtp->callref);
+		close_connection(conn);
+	}
+
+	return rc;
+}
+
+static int mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+{
 	struct gsm_mncc_rtp mncc = { 0, };
 
 	mncc.msg_type = msg_type;
 	mncc.callref = callref;
 
-	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
-	if (rc != sizeof(mncc)) {
-		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", callref);
-		close_connection(conn);
-	}
-
-	return rc;
+	return mncc_rtp_write(conn, &mncc);
 }
 
 /* Send a MNCC_RTP_CONNECT to the MSC for the given call legs */
@@ -195,7 +202,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	LOGP(DMNCC, LOGL_DEBUG, "SEND rtp_connect: IP=(%s) PORT=(%u)\n",
 	     osmo_sockaddr_ntop((const struct sockaddr*)&other->addr, ip_addr),
 	     osmo_sockaddr_port((const struct sockaddr*)&other->addr));
-	rc = write(leg->conn->fd.fd, &mncc, sizeof(mncc));
+	rc = mncc_rtp_write(leg->conn, &mncc);
 	if (rc != sizeof(mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n",
 			leg->callref);
