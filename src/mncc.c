@@ -130,7 +130,7 @@ static void mncc_fill_header(struct gsm_mncc *mncc, uint32_t msg_type, uint32_t 
 	}
 }
 
-static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc)
+static int mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc)
 {
 	int rc;
 
@@ -144,17 +144,19 @@ static void mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc)
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", mncc->callref);
 		close_connection(conn);
 	}
+
+	return rc;
 }
 
-static void mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+static int mncc_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
 {
 	struct gsm_mncc mncc = { 0, };
 
 	mncc_fill_header(&mncc, msg_type, callref);
-	mncc_write(conn, &mncc);
+	return mncc_write(conn, &mncc);
 }
 
-static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
+static int mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint32_t callref)
 {
 	int rc;
 	struct gsm_mncc_rtp mncc = { 0, };
@@ -167,6 +169,8 @@ static void mncc_rtp_send(struct mncc_connection *conn, uint32_t msg_type, uint3
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", callref);
 		close_connection(conn);
 	}
+
+	return rc;
 }
 
 /* Send a MNCC_RTP_CONNECT to the MSC for the given call legs */
@@ -393,7 +397,8 @@ static void check_rtp_connect(struct mncc_connection *conn, const char *buf, int
 	leg = mncc_find_leg_not_released(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "leg(%u) can not be found\n", rtp->callref);
-		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+		mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+		return;
 	}
 
 	/* extract information about where the RTP is */
@@ -426,7 +431,8 @@ static void check_rtp_create(struct mncc_connection *conn, const char *buf, int 
 	leg = mncc_find_leg_not_released(rtp->callref);
 	if (!leg) {
 		LOGP(DMNCC, LOGL_ERROR, "call(%u) can not be found\n", rtp->callref);
-		return mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+		mncc_send(conn, MNCC_REJ_REQ, rtp->callref);
+		return;
 	}
 
 	/* extract information about where the RTP is */
@@ -488,7 +494,8 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 			LOGP(DMNCC, LOGL_ERROR,
 				"MNCC leg(%u) without called addr fields(%u)\n",
 				data->callref, data->fields);
-			return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+			mncc_send(conn, MNCC_REJ_REQ, data->callref);
+			return;
 		}
 
 		/* Emergency without a called number present. Use the standard "emergency" number. */
@@ -499,14 +506,16 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC leg(%u) without calling addr fields(%u)\n",
 			data->callref, data->fields);
-		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		return;
 	}
 
 	/* TODO.. bearer caps and better audio handling */
 	if (!continue_setup(conn, data)) {
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC screening parameters failed leg(%u)\n", data->callref);
-		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		return;
 	}
 
 	/* Create an RTP port and then allocate a call */
@@ -514,7 +523,8 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	if (!call) {
 		LOGP(DMNCC, LOGL_ERROR,
 			"MNCC leg(%u) failed to allocate call\n", data->callref);
-		return mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		mncc_send(conn, MNCC_REJ_REQ, data->callref);
+		return;
 	}
 
 	leg = (struct mncc_call_leg *) call->initial;
