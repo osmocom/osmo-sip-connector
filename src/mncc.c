@@ -922,11 +922,10 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 	 *  - Screening, redirect?
 	 *  - Synth. the bearer caps based on codecs?
 	 */
-	rc = write(conn->fd.fd, &mncc, sizeof(mncc));
+	rc = mncc_write(conn, &mncc);
 	if (rc != sizeof(mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message leg(%u)\n",
 			leg->callref);
-		close_connection(conn);
 		talloc_free(leg);
 		return -1;
 	}
