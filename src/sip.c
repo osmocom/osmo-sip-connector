@@ -26,6 +26,7 @@
 
 #include <osmocom/core/utils.h>
 #include <osmocom/core/socket.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <sofia-sip/sip_status.h>
 #include <sofia-sip/su_log.h>
@@ -106,6 +107,34 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 	nua_ack(leg->nua_handle, TAG_END());
 }
 
+int _osmo_dec_gcr(struct osmo_gcr_parsed *gcr, const uint8_t *elem, uint8_t len)
+{
+	uint16_t parsed = 1; /* account for length byte right away */
+
+	if (len < 13)
+		return -EBADMSG;
+
+	gcr->net_len = elem[0];
+	if (gcr->net_len < 3 || gcr->net_len > 5)
+		return -EINVAL;
+
+	memcpy(gcr->net, elem + parsed, gcr->net_len);
+	/* +1 for ignored Node ID length field */
+	parsed += (gcr->net_len + 1);
+
+	gcr->node = osmo_load16be(elem + parsed);
+	parsed += 2;
+
+	if (elem[parsed] != 5) /* see Table B 2.1.9.2 */
+		return -ENOENT;
+
+	parsed++;
+
+	memcpy(gcr->cr, elem + parsed, 5);
+
+	return parsed + 5;
+}
+
 static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 			const sip_t *sip)
 {
@@ -113,8 +142,19 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	struct sip_call_leg *leg;
 	const char *from = NULL, *to = NULL;
 	char ip_addr[INET6_ADDRSTRLEN];
+	uint8_t gcr_back[28] = { 0 };
+
 
 	LOGP(DSIP, LOGL_INFO, "Incoming call(%s) handle(%p)\n", sip->sip_call_id->i_id, nh);
+
+	sip_unknown_t *unknown_header = sip->sip_unknown;
+	while (unknown_header != NULL) {
+		if (!strcmp("X-Global-Call-Ref", unknown_header->un_name)) {
+			osmo_hexparse(unknown_header->un_value, gcr_back, sizeof(gcr_back));
+			break;
+		}
+		unknown_header = unknown_header->un_next;
+	}
 
 	if (!sdp_screen_sdp(sip)) {
 		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
@@ -130,6 +170,8 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 		nua_handle_destroy(nh);
 		return;
 	}
+
+	_osmo_dec_gcr(&call->gcr, gcr_back, sizeof(gcr_back));
 
 	if (sip->sip_to)
 		to = sip->sip_to->a_url->url_user;
@@ -590,10 +632,38 @@ static void sip_retrieve_call(struct call_leg *_leg)
 	leg->state = SIP_CC_CONNECTED;
 }
 
+/*! Encode Global Call Reference. */
+uint8_t _osmo_enc_gcr(uint8_t *buf, const struct osmo_gcr_parsed *g)
+{
+	uint8_t tmp[2];
+
+	if (!g)
+		return 0;
+
+	if (g->net_len < 3 || g->net_len > 5)
+		return 0;
+
+	buf = lv_put(buf, g->net_len, g->net);
+	osmo_store16be(g->node, &tmp);
+	buf = lv_put(buf, 2, tmp);
+	buf = lv_put(buf, 5, g->cr);
+
+	/* Length: LV(Net) + LV(Node) + LV(CRef) - see 3GPP TS §3.2.2.115 */
+	return (g->net_len + 1) + (2 + 1) + (5 + 1);
+}
+
 static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			const char *calling_num, const char *called_num)
 {
 	struct call_leg *other = leg->base.call->initial;
+	char gcr_hex[30];
+	uint8_t data[15];
+
+	gcr_hex[0] = '\0';
+	data[0] = '\0';
+	uint8_t len = _osmo_enc_gcr(data, &leg->base.call->gcr);
+	if (len)
+		osmo_strlcpy(gcr_hex, osmo_hexdump_nospc(data, len*2+1), len*2+1);
 
 	char *from = talloc_asprintf(leg, "sip:%s@%s:%d",
 				calling_num,
@@ -605,6 +675,8 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 				agent->app->sip.remote_port);
 	char *sdp = sdp_create_file(leg, other, sdp_sendrecv);
 
+	char *x_gcr = talloc_asprintf(leg, "X-Global-Call-Ref: %s", gcr_hex);
+
 	leg->state = SIP_CC_INITIAL;
 	leg->dir = SIP_DIR_MT;
 	nua_invite(leg->nua_handle,
@@ -612,6 +684,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 			SIPTAG_TO_STR(to),
 			NUTAG_MEDIA_ENABLE(0),
 			SIPTAG_CONTENT_TYPE_STR("application/sdp"),
+			SIPTAG_HEADER_STR(x_gcr),
 			SIPTAG_PAYLOAD_STR(sdp),
 			TAG_END());
 

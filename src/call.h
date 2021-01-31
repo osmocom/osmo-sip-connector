@@ -31,6 +31,7 @@ struct call {
 
 	const char *source;
 	const char *dest;
+	struct osmo_gcr_parsed gcr;
 };
 
 enum {
