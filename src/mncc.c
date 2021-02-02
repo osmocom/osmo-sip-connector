@@ -160,7 +160,7 @@ static int mncc_rtp_write(struct mncc_connection *conn, struct gsm_mncc_rtp *rtp
 {
 	int rc;
 
-	rc = write(conn->fd.fd, &rtp, sizeof(rtp));
+	rc = write(conn->fd.fd, rtp, sizeof(*rtp));
 	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(rtp->msg_type));
 	if (rc != sizeof(*rtp)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u): %d\n", rtp->callref, rc);
