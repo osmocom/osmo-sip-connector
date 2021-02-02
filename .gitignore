@@ -5,6 +5,7 @@ Makefile
 .deps
 *.sw?
 .version
+*~
 
 aclocal.m4
 autom4te.cache
