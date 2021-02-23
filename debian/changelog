@@ -1,3 +1,32 @@
+osmo-sip-connector (1.5.0) unstable; urgency=medium
+
+  [ Vadim Yanitskiy ]
+  * debian/control: change maintainer to the Osmocom team / mailing list
+
+  [ Matt Johnson ]
+  * sip: Specify invite contact tag
+
+  [ Alexander Couzens ]
+  * Revert "sip: Specify invite contact tag"
+  * mncc: remove callref argument from mncc_write()
+  * mncc: add return code for write/send function
+  * mncc: Introduce mncc_rtp_write similiar to mncc_write
+  * mncc: mncc_create_remote_leg: use mncc_write instead of write direct to the fd
+
+  [ Pau Espin Pedrol ]
+  * mncc: Support IPv6 addresses (new version mncc 7)
+  * sdp: Don't select addresses failing to parse
+  * contrib/jenkins: Enable parallel make in make distcheck
+  * mncc: Log write error code
+  * .gitignore: Get rid of new autofoo tmp files
+  * mncc: Fix write len
+
+  [ Oliver Smith ]
+  * contrib/jenkins: don't build osmo-gsm-manuals
+  * configure.ac: set -std=gnu11
+
+ -- Pau Espin Pedrol <pespin@espeweb.net>  Tue, 23 Feb 2021 13:42:08 +0100
+
 osmo-sip-connector (1.4.1) unstable; urgency=medium
 
   [ Oliver Smith ]
