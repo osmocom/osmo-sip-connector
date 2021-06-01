@@ -68,8 +68,8 @@ bool sdp_get_sdp_mode(const sip_t *sip, sdp_mode_t *mode) {
 		return sdp_sendrecv;
 	}
 
-	sdp_parser_free(parser);
 	*mode = sdp->sdp_media->m_mode;
+	sdp_parser_free(parser);
 	return true;
 }
 
