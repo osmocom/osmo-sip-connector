@@ -234,7 +234,7 @@ static void sip_handle_reinvite(struct sip_call_leg *leg, nua_handle_t *nh, cons
 		     osmo_sockaddr_ntop((struct sockaddr*)&leg->base.addr, ip_addr),
 		     osmo_sockaddr_port((struct sockaddr*)&leg->base.addr));
 		if (osmo_sockaddr_cmp((struct osmo_sockaddr *)&prev_addr,
-				      (struct osmo_sockaddr *)&leg->base)) {
+				      (struct osmo_sockaddr *)&leg->base.addr)) {
 			LOGP(DSIP, LOGL_INFO, "re-INVITE changes media connection.\n");
 			if (other->update_rtp)
 				other->update_rtp(leg->base.call->remote);
