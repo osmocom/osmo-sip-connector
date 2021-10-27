@@ -544,6 +544,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	leg->state = MNCC_CC_INITIAL;
 	leg->dir = MNCC_DIR_MO;
 	leg->base.call->gcr = data->gcr;
+	leg->base.call->gcr_present = true;
 	memcpy(&leg->called, called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
@@ -899,7 +900,8 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 
 	mncc.fields |= MNCC_F_CALLING;
 	mncc.calling.plan = GSM48_NPI_ISDN_E164;
-	mncc.gcr = call->gcr;
+	if (call->gcr_present)
+		mncc.gcr = call->gcr;
 
 	if (call->source && call->source[0] == '+') {
 		mncc.calling.type = GSM48_TON_INTERNATIONAL;

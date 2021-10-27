@@ -5,6 +5,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/utils.h>
+#include <osmocom/gsm/gsm29205.h>
 
 #include <stdbool.h>
 #include <netinet/in.h>
@@ -31,7 +32,10 @@ struct call {
 
 	const char *source;
 	const char *dest;
+
+	/* Global Call Reference */
 	struct osmo_gcr_parsed gcr;
+	bool gcr_present;
 };
 
 enum {
