@@ -26,7 +26,6 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/mncc.h>
-#include <osmocom/gsm/gsm29205.h>
 
 #include <stdint.h>
 #include <netinet/in.h>
@@ -124,6 +123,7 @@ struct gsm_call {
 #define MNCC_F_CCCAP		0x0800
 #define MNCC_F_KEYPAD		0x1000
 #define MNCC_F_SIGNAL		0x2000
+#define MNCC_F_GCR		0x4000
 
 struct gsm_mncc {
 	/* context based information */
@@ -160,7 +160,9 @@ struct gsm_mncc {
 
 	unsigned char	lchan_type;
 	unsigned char	lchan_mode;
-	struct osmo_gcr_parsed gcr;
+
+	/* Global Call Reference (encoded as per 3GPP TS 29.205) */
+	uint8_t		gcr[16];
 
 	/* A buffer to contain SDP ('\0' terminated) */
 	char		sdp[1024];

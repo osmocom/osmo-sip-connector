@@ -485,6 +485,7 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	const struct gsm_mncc_number *called;
 	struct call *call;
 	struct mncc_call_leg *leg;
+	struct osmo_gcr_parsed gcr;
 
 	if (rc < sizeof(*data)) {
 		LOGP(DMNCC, LOGL_ERROR, "gsm_mncc of wrong size %d vs. %zu\n",
@@ -525,6 +526,16 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 		return;
 	}
 
+	/* Decode the Global Call Reference (if present) */
+	if (data->fields & MNCC_F_GCR) {
+		if (osmo_dec_gcr(&gcr, data->gcr, sizeof(data->gcr)) < 0) {
+			LOGP(DMNCC, LOGL_ERROR,
+				"MNCC leg(%u) failed to parse GCR\n", data->callref);
+			mncc_send(conn, MNCC_REJ_REQ, data->callref);
+			return;
+		}
+	}
+
 	/* Create an RTP port and then allocate a call */
 	call = call_mncc_create();
 	if (!call) {
@@ -543,11 +554,14 @@ static void check_setup(struct mncc_connection *conn, const char *buf, int rc)
 	leg->conn = conn;
 	leg->state = MNCC_CC_INITIAL;
 	leg->dir = MNCC_DIR_MO;
-	leg->base.call->gcr = data->gcr;
-	leg->base.call->gcr_present = true;
 	memcpy(&leg->called, called, sizeof(leg->called));
 	memcpy(&leg->calling, &data->calling, sizeof(leg->calling));
 	memcpy(&leg->imsi, data->imsi, sizeof(leg->imsi));
+
+	if (data->fields & MNCC_F_GCR) {
+		leg->base.call->gcr_present = true;
+		leg->base.call->gcr = gcr;
+	}
 
 	LOGP(DMNCC, LOGL_INFO,
 		"Created call(%u) with MNCC leg(%u) IMSI(%.16s)\n",
@@ -873,6 +887,7 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 {
 	struct mncc_call_leg *leg;
 	struct gsm_mncc mncc = { 0, };
+	struct msgb *msg;
 	int rc;
 
 	leg = talloc_zero(call, struct mncc_call_leg);
@@ -900,8 +915,6 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 
 	mncc.fields |= MNCC_F_CALLING;
 	mncc.calling.plan = GSM48_NPI_ISDN_E164;
-	if (call->gcr_present)
-		mncc.gcr = call->gcr;
 
 	if (call->source && call->source[0] == '+') {
 		mncc.calling.type = GSM48_TON_INTERNATIONAL;
@@ -918,6 +931,16 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 		mncc.called.plan = GSM48_NPI_ISDN_E164;
 		mncc.called.type = GSM48_TON_UNKNOWN;
 		OSMO_STRLCPY_ARRAY(mncc.called.number, call->dest);
+	}
+
+	/* Encode the Global Call Reference (if present) */
+	if (call->gcr_present) {
+		msg = msgb_alloc(sizeof(mncc.gcr), "MNCC GCR");
+		if (msg == NULL || (rc = osmo_enc_gcr(msg, &call->gcr)) == 0)
+			LOGP(DMNCC, LOGL_ERROR, "MNCC leg(%u) failed to encode GCR\n", call->id);
+		else
+			memcpy(&mncc.gcr[0], msg->data, rc);
+		msgb_free(msg);
 	}
 
 	/*
