@@ -692,6 +692,7 @@ static int send_invite(struct sip_agent *agent, struct sip_call_leg *leg,
 	talloc_free(from);
 	talloc_free(to);
 	talloc_free(sdp);
+	talloc_free(x_gcr);
 	return 0;
 }
 
