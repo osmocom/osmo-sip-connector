@@ -1,3 +1,23 @@
+osmo-sip-connector (1.6.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * fix use-after-free in SIP re-INVITE
+  * SIP re-INVITE: fix media connection change detection
+  * SIP re-INVITE: log media connection
+
+  [ Oliver Smith ]
+  * debian/control: remove dh-systemd build-depend
+
+  [ Keith ]
+  * MNCC v8: Implement Basic Support for Global Call Reference.
+
+  [ Vadim Yanitskiy ]
+  * sip: fix memory leak (x_gcr) in send_invite()
+  * sip: use osmo_{enc,dec}_gcr() from libosmocore
+  * mncc: rework passing GCR over the MNCC interface
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 16 Nov 2021 14:52:09 +0100
+
 osmo-sip-connector (1.5.0) unstable; urgency=medium
 
   [ Vadim Yanitskiy ]
