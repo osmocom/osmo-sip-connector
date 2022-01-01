@@ -195,6 +195,7 @@ static bool send_rtp_connect(struct mncc_call_leg *leg, struct call_leg *other)
 	mncc.callref = leg->callref;
 	mncc.addr = other->addr;
 	mncc.payload_type = other->payload_type;
+	memcpy(mncc.sdp, other->sdp, sizeof(mncc.sdp));
 	/*
 	 * FIXME: mncc.payload_msg_type should already be compatible.. but
 	 * payload_type should be different..

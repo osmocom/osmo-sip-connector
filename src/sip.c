@@ -100,7 +100,7 @@ static void call_connect(struct sip_call_leg *leg, const sip_t *sip)
 		other->release_call(other);
 		return;
 	}
-
+	strncpy(leg->base.sdp, sip->sip_payload->pl_data, sizeof(leg->base.sdp) - 1);
 	LOGP(DSIP, LOGL_INFO, "leg(%p) is now connected(%s).\n", leg, sip->sip_call_id->i_id);
 	leg->state = SIP_CC_CONNECTED;
 	other->connect_call(other);
