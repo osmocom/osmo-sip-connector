@@ -12,8 +12,8 @@ Build-Depends: debhelper (>= 7.0.0~),
                osmo-gsm-manuals-dev
 Standards-Version: 3.8.4
 Homepage: https://osmocom.org/projects/osmo-sip-conector/wiki
-Vcs-Git: git://git.osmocom.org/osmo-sip-connector.git
-Vcs-Browser: http://git.osmocom.org/osmo-sip-connector
+Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/osmo-sip-connector
+Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-sip-connector
 
 Package: osmo-sip-connector
 Architecture: any
