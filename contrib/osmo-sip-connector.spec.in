@@ -69,7 +69,7 @@ make %{?_smp_mflags} check || (find . -name testsuite.log -exec cat {} +)
 
 %files
 %license COPYING
-%doc README.asciidoc
+%doc README.md
 %doc %{_docdir}/%{name}/examples
 %{_bindir}/osmo-sip-connector
 %dir %{_sysconfdir}/osmocom
