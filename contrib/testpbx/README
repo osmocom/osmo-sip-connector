@@ -24,6 +24,6 @@ Build:
 
 Run:
 
-	docker run yourimagename:tag
+	docker run --rm yourimagename:tag
 
 SIP is exposed on 5060 of your port and audio on 6000-6020
