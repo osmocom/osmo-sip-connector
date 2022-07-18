@@ -137,12 +137,7 @@ static void new_call(struct sip_agent *agent, nua_handle_t *nh,
 	}
 
 	call = call_sip_create();
-	if (!call) {
-		LOGP(DSIP, LOGL_ERROR, "No supported codec.\n");
-		nua_respond(nh, SIP_500_INTERNAL_SERVER_ERROR, TAG_END());
-		nua_handle_destroy(nh);
-		return;
-	}
+	OSMO_ASSERT(call);
 
 	/* Decode Decode the Global Call Reference (if present) */
 	if (xgcr_hdr_present) {
