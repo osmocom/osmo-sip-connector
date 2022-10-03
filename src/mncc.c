@@ -936,10 +936,12 @@ int mncc_create_remote_leg(struct mncc_connection *conn, struct call *call)
 	/* Encode the Global Call Reference (if present) */
 	if (call->gcr_present) {
 		msg = msgb_alloc(sizeof(mncc.gcr), "MNCC GCR");
-		if (msg == NULL || (rc = osmo_enc_gcr(msg, &call->gcr)) == 0)
+		if (msg == NULL || (rc = osmo_enc_gcr(msg, &call->gcr)) == 0) {
 			LOGP(DMNCC, LOGL_ERROR, "MNCC leg(%u) failed to encode GCR\n", call->id);
-		else
+		} else {
 			memcpy(&mncc.gcr[0], msg->data, rc);
+			mncc.fields |= MNCC_F_GCR;
+		}
 		msgb_free(msg);
 	}
 
