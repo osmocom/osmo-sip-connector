@@ -17,7 +17,7 @@ Vcs-Browser: https://gitea.osmocom.org/cellular-infrastructure/osmo-sip-connecto
 
 Package: osmo-sip-connector
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}, adduser
 Description: MNCC to SIP bridge for osmo-nitb
  Use the osmo-nitb MNCC interface and bridge it to SIP.
 
