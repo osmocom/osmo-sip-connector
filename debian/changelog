@@ -1,3 +1,13 @@
+osmo-sip-connector (1.6.2) unstable; urgency=medium
+
+  [ Max ]
+  * Set working directory in systemd service file
+
+  [ Keith Whyte ]
+  * Set MNCC_F_GCR field when the gcr is present
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 07 Feb 2023 17:47:28 +0100
+
 osmo-sip-connector (1.6.1) unstable; urgency=medium
 
   [ Pau Espin Pedrol ]
