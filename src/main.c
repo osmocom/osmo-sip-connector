@@ -147,8 +147,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = telnet_init_dynif(tall_mncc_ctx, NULL,
-				vty_get_bind_addr(), OSMO_VTY_PORT_MNCC_SIP);
+	rc = telnet_init_default(tall_mncc_ctx, NULL, OSMO_VTY_PORT_MNCC_SIP);
 	if (rc < 0)
 		exit(1);
 
