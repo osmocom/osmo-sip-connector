@@ -8,7 +8,7 @@ cover aspects of configuring and running OsmoSIPConnector.
 === About OsmoSIPConnector
 
 OsmoSIPConnector translates between Mobile Network Call Control (MNCC)
-used in the GSM newtwork and Voice over IP SIP call control messages so that
+used in the GSM network and Voice over IP SIP call control messages so that
 speech calls can traverse through the mobile network to SIP and vice versa. It
 has the following interfaces:
 
