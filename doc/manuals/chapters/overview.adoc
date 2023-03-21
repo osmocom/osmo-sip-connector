@@ -16,6 +16,27 @@ has the following interfaces:
 - SIP towards the PBX
 - The Osmocom typical telnet VTY interface.
 
+The SIP implemented by osmo-sip-connector can be characterized as follows:
+
+Only a SIP trunk is supported; it will appear to the remote SIP server (PBX) like
+another PBX (or a public network) interfaced via a trunk.  Specifically, this means
+there is no SIP REGISTER or any form of authentication supported.  You
+will need to configure the SIP peer to implicitly authorize the trunk by
+its IP address / port.
+
+osmo-sip-connector handles only the signaling translation between GSM CC
+and SIP, but does not handle RTP. The RTP user plane is passed
+transparently from the MSC-colocated osmo-mgw to the SIP side. This also
+means that no transcoding is performed. The RTP streams contain whatever
+cellular specific codec you have configured your network to use for this
+call (FR, EFR, HR, AMR).  Hence, **the SIP peer must support the
+codec[s] you have configured on your MSC/BSC**
+
+As the osmo-sip-connector attaches to the external MNCC socket of
+OsmoMSC, running osmo-sip-connector will disable the internal call
+routing of OsmoMSC, see the related OsmoMSC documentation.  All mobile
+originated calls originating in GSM will be passed to the SIP connector.
+
 Find the OsmoSIPConnector issue tracker and wiki online at
 
 - https://osmocom.org/projects/osmo-sip-connector
