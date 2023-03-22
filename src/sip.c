@@ -380,7 +380,12 @@ void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua,
 		else if (status >= 300) {
 			struct call_leg *other = call_leg_other(&leg->base);
 
-			LOGP(DSIP, LOGL_INFO, "INVITE got status(%d), releasing leg(%p).\n", status, leg);
+			if (status < 400)
+				LOGP(DSIP, LOGL_NOTICE, "INVITE got status(%d), releasing leg(%p) as redirect is not"
+				     " implemented\n", status, leg);
+			else
+				LOGP(DSIP, LOGL_ERROR, "INVITE got status(%d), releasing leg(%p)\n", status, leg);
+
 			nua_cancel(leg->nua_handle, TAG_END());
 			nua_handle_destroy(leg->nua_handle);
 			call_leg_release(&leg->base);
