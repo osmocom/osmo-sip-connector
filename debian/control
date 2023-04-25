@@ -2,7 +2,7 @@ Source: osmo-sip-connector
 Section: net
 Priority: optional
 Maintainer: Osmocom team <openbsc@lists.osmocom.org>
-Build-Depends: debhelper (>= 7.0.0~),
+Build-Depends: debhelper (>= 10),
                autotools-dev,
                pkg-config,
                libsofia-sip-ua-glib-dev,
