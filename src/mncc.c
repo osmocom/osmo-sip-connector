@@ -134,12 +134,14 @@ static int mncc_write(struct mncc_connection *conn, struct gsm_mncc *mncc)
 {
 	int rc;
 
+	LOGP(DMNCC, LOGL_DEBUG, "tx MNCC %s with SDP=%s\n", osmo_mncc_name(mncc->msg_type),
+	     osmo_quote_str(mncc->sdp, -1));
+
 	/*
 	 * TODO: we need to put cause in here for release or such? shall we return a
 	 * static struct?
 	 */
 	rc = write(conn->fd.fd, mncc, sizeof(*mncc));
-	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(mncc->msg_type));
 	if (rc != sizeof(*mncc)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u)\n", mncc->callref);
 		close_connection(conn);
@@ -160,8 +162,10 @@ static int mncc_rtp_write(struct mncc_connection *conn, struct gsm_mncc_rtp *rtp
 {
 	int rc;
 
+	LOGP(DMNCC, LOGL_DEBUG, "tx MNCC %s with SDP=%s\n", osmo_mncc_name(rtp->msg_type),
+	     osmo_quote_str(rtp->sdp, -1));
+
 	rc = write(conn->fd.fd, rtp, sizeof(*rtp));
-	LOGP(DMNCC, LOGL_DEBUG, "MNCC sent message type: %s\n", osmo_mncc_name(rtp->msg_type));
 	if (rc != sizeof(*rtp)) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to send message for call(%u): %d\n", rtp->callref, rc);
 		close_connection(conn);
@@ -1028,6 +1032,53 @@ static void mncc_reconnect(void *data)
 	conn->state = MNCC_WAIT_VERSION;
 }
 
+static inline void log_mncc(const char *label, const uint8_t *buf, size_t buflen)
+{
+	uint32_t msg_type;
+	const struct gsm_mncc *gsm_mncc;
+	const struct gsm_mncc_rtp *gsm_mncc_rtp;
+	const char *sdp = NULL;
+
+	/* Any size errors will be logged elsewhere already, so just exit here if the buffer is too small. */
+	if (buflen < 4)
+		return;
+	memcpy(&msg_type, buf, 4);
+
+	switch (msg_type) {
+	case MNCC_SETUP_IND:
+	case MNCC_DISC_IND:
+	case MNCC_REL_IND:
+	case MNCC_REJ_IND:
+	case MNCC_REL_CNF:
+	case MNCC_SETUP_COMPL_IND:
+	case MNCC_SETUP_CNF:
+	case MNCC_CALL_CONF_IND:
+	case MNCC_ALERT_IND:
+	case MNCC_HOLD_IND:
+	case MNCC_RETRIEVE_IND:
+		if (buflen < sizeof(gsm_mncc))
+			return;
+		gsm_mncc = (void *)buf;
+		sdp = gsm_mncc->sdp;
+		break;
+	case MNCC_RTP_CREATE:
+	case MNCC_RTP_CONNECT:
+		if (buflen < sizeof(gsm_mncc_rtp))
+			return;
+		gsm_mncc_rtp = (void *)buf;
+		sdp = gsm_mncc_rtp->sdp;
+		break;
+
+	default:
+		break;
+	}
+	if (sdp)
+		LOGP(DMNCC, LOGL_DEBUG, "%sMNCC %s with SDP=%s\n", label, osmo_mncc_name(msg_type),
+		     osmo_quote_str(sdp, -1));
+	else
+		LOGP(DMNCC, LOGL_DEBUG, "%sMNCC %s\n", label, osmo_mncc_name(msg_type));
+}
+
 /* osmo-fd read call-back for MNCC socket: read MNCC message + dispatch it */
 static int mncc_data(struct osmo_fd *fd, unsigned int what)
 {
@@ -1047,10 +1098,10 @@ static int mncc_data(struct osmo_fd *fd, unsigned int what)
 		goto bad_data;
 	}
 
+	log_mncc("rx ", (void *)buf, rc);
+
+	/* Handle the received MNCC message */
 	memcpy(&msg_type, buf, 4);
-
-	LOGP(DMNCC, LOGL_DEBUG, "MNCC rcvd message type: %s\n", osmo_mncc_name(msg_type));
-
 	switch (msg_type) {
 	case MNCC_SOCKET_HELLO:
 		check_hello(conn, buf, rc);

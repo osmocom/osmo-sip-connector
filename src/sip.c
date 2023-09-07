@@ -358,8 +358,8 @@ static int status2cause(int status)
 
 void nua_callback(nua_event_t event, int status, char const *phrase, nua_t *nua, nua_magic_t *magic, nua_handle_t *nh, nua_hmagic_t *hmagic, sip_t const *sip, tagi_t tags[])
 {
-	LOGP(DSIP, LOGL_DEBUG, "SIP event[%s] status(%d) phrase(%s) %p\n",
-		nua_event_name(event), status, phrase, hmagic);
+	LOGP(DSIP, LOGL_DEBUG, "SIP event[%s] status(%d) phrase(%s) SDP(%s) %p\n",
+		nua_event_name(event), status, phrase, sip_get_sdp(sip), hmagic);
 
 	if (event == nua_r_invite) {
 		struct sip_call_leg *leg;

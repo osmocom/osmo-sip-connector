@@ -322,7 +322,7 @@ char *sdp_create_file(struct sip_call_leg *leg, struct call_leg *other, sdp_mode
 
 	sdp = sdp_session(parser);
 	if (!sdp) {
-		LOGP(DSIP, LOGL_ERROR, "leg(%p) no sdp session\n", other);
+		LOGP(DSIP, LOGL_INFO, "leg(%p) no SDP session in %s, returning SDP unchanged\n", other, osmo_quote_str(sdp_data, -1));
 		sdp_parser_free(parser);
 		return talloc_strdup(leg, sdp_data);
 	}
