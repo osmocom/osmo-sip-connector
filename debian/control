@@ -8,8 +8,8 @@ Build-Depends: debhelper (>= 10),
                libsofia-sip-ua-glib-dev,
                libsofia-sip-ua-dev,
                dh-autoreconf,
-               libosmocore-dev (>= 1.8.0),
-               osmo-gsm-manuals-dev (>= 1.4.0)
+               libosmocore-dev (>= 1.9.0),
+               osmo-gsm-manuals-dev (>= 1.5.0)
 Standards-Version: 3.8.4
 Homepage: https://osmocom.org/projects/osmo-sip-conector/wiki
 Vcs-Git: https://gitea.osmocom.org/cellular-infrastructure/osmo-sip-connector

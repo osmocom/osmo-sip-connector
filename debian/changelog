@@ -1,3 +1,21 @@
+osmo-sip-connector (1.6.3) unstable; urgency=medium
+
+  [ arehbein ]
+  * Transition to use of 'telnet_init_default'
+
+  [ Harald Welte ]
+  * doc: fix typo
+  * doc: Expand the virtually empty user manual with some basics
+
+  [ Oliver Smith ]
+  * sip: tweak log for release caused by status >= 300
+  * debian: set compat level to 10
+
+  [ Vadim Yanitskiy ]
+  * tests: $(BUILT_SOURCES) is not defined, depend on osmo-sip-connector
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Tue, 12 Sep 2023 17:24:26 +0200
+
 osmo-sip-connector (1.6.2) unstable; urgency=medium
 
   [ Max ]

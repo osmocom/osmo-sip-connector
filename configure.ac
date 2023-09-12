@@ -24,9 +24,9 @@ dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 AC_PROG_CC
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.8.0)
-PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.8.0)
-PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.8.0)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 1.9.0)
+PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 1.9.0)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 1.9.0)
 PKG_CHECK_MODULES(SOFIASIP, sofia-sip-ua-glib >= 1.12.0)
 
 AC_ARG_ENABLE(sanitize,
