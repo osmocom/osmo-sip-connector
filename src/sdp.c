@@ -65,7 +65,7 @@ bool sdp_get_sdp_mode(const sip_t *sip, sdp_mode_t *mode) {
 
 	if (!sdp->sdp_media || !sdp->sdp_media->m_mode) {
 		sdp_parser_free(parser);
-		return sdp_sendrecv;
+		return false;
 	}
 
 	*mode = sdp->sdp_media->m_mode;
