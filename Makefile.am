@@ -5,6 +5,7 @@ SUBDIRS = src tests contrib doc
 BUILT_SOURCES = $(top_srcdir)/.version
 EXTRA_DIST = \
 	     .version \
+	     README.md \
 	     contrib/osmo-sip-connector.spec.in \
 	     debian \
 	     git-version-gen \
