@@ -1,3 +1,29 @@
+osmo-sip-connector (1.7.0) unstable; urgency=medium
+
+  [ Neels Hofmeyr ]
+  * drop misleading error message
+  * sdp_get_sdp_mode(): fix wrong return value
+  * forward SDP between SIP and MNCC
+  * verbosely log MNCC and SDP
+
+  [ Andreas Eversberg ]
+  * Use uniform log format for default config files
+
+  [ Vadim Yanitskiy ]
+  * build: include README.md into the release tarball
+  * README.md: cosmetic: fix a typo
+
+  [ Max ]
+  * .deb/.rpm: add osmocom user during package install
+
+  [ Oliver Smith ]
+  * .deb/.rpm: various fixes related to non-root
+  * contrib: remove rpm spec file
+  * debian/postinst: add checks, be verbose
+  * Change-Id: I828fb19a9bba9e71087a69ee1b4206b3eb26f004
+
+ -- Oliver Smith <osmith@sysmocom.de>  Thu, 25 Jul 2024 10:34:23 +0200
+
 osmo-sip-connector (1.6.3) unstable; urgency=medium
 
   [ arehbein ]
