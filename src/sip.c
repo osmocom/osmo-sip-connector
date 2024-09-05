@@ -82,7 +82,7 @@ static void call_progress(struct sip_call_leg *leg, const sip_t *sip, int status
 		return;
 
 	/* Extract SDP for session in progress with matching codec */
-	if (status == 183)
+	if ((status == 180 || status == 183) && sip->sip_payload && sip->sip_payload->pl_data)
 		sdp_extract_sdp(leg, sip, false);
 
 	LOGP(DSIP, LOGL_INFO, "leg(%p) is now progressing.\n", leg);
