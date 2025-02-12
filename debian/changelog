@@ -1,3 +1,10 @@
+osmo-sip-connector (1.7.1) unstable; urgency=medium
+
+  [ Harald Welte ]
+  * sip.c: permit early media with both 183 and 180
+
+ -- Oliver Smith <osmith@sysmocom.de>  Wed, 12 Feb 2025 14:42:41 +0100
+
 osmo-sip-connector (1.7.0) unstable; urgency=medium
 
   [ Neels Hofmeyr ]
