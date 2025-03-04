@@ -33,7 +33,6 @@ extern void *tall_mncc_ctx;
 struct app_config g_app;
 
 static int mncc_vty_go_parent(struct vty *vty);
-static int mncc_vty_is_config_node(struct vty *vty, int node);
 
 static struct cmd_node sip_node = {
 	SIP_NODE,
@@ -57,7 +56,6 @@ static struct vty_app_info vty_info = {
 	.name		= "OsmoSIPcon",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= mncc_vty_go_parent,
-	.is_config_node	= mncc_vty_is_config_node,
 	.copyright	= "GNU AGPLv3+\n",
 };
 
@@ -71,7 +69,7 @@ static int mncc_vty_go_parent(struct vty *vty)
 		vty->index = NULL;
 		break;
 	default:
-		if (mncc_vty_is_config_node(vty, vty->node))
+		if (vty->node >= SIP_NODE)
 			vty->node = CONFIG_NODE;
 		else
 			vty->node = ENABLE_NODE;
@@ -79,11 +77,6 @@ static int mncc_vty_go_parent(struct vty *vty)
 		break;
 	}
 	return vty->node;
-}
-
-static int mncc_vty_is_config_node(struct vty *vty, int node)
-{
-	return node >= SIP_NODE;
 }
 
 static int config_write_sip(struct vty *vty)
