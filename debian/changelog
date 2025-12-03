@@ -1,3 +1,9 @@
+osmo-sip-connector (1.7.2) unstable; urgency=medium
+
+  * Drop use of deprecated vty is_config_node() cb
+
+ -- Pau Espin Pedrol <pespin@sysmocom.de>  Wed, 03 Dec 2025 20:04:16 +0100
+
 osmo-sip-connector (1.7.1) unstable; urgency=medium
 
   [ Harald Welte ]
